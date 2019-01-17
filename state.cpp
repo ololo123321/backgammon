@@ -244,10 +244,8 @@ struct State{
 };
 
 void pit(){
-	while (true){
+	State s = State();
+	while (!s.winner){
 		s.update_randomly();
-		if (s.winner){
-			break;
-		}
 	}
 }
