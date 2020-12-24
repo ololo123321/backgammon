@@ -1,7 +1,7 @@
 import time
 import os
 import random
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 import numpy as np
 import tensorflow as tf
 
@@ -11,7 +11,7 @@ from agents import HumanAgent, RandomAgent, TDAgent
 from utils import extract_features
 
 
-class BaseModel(metaclass=abc.ABCMeta):
+class BaseModel(ABC):
     def __init__(self, sess, model_path, summary_path, checkpoint_path, hidden_sizes=None, restore_flag=False):
         self.sess = sess
         self.model_path = model_path
@@ -19,6 +19,20 @@ class BaseModel(metaclass=abc.ABCMeta):
         self.checkpoint_path = checkpoint_path
         self.hidden_sizes = hidden_sizes
         self.restore_flag = restore_flag
+
+        # tensors
+        self.x = None
+        self.keep_prob = None
+        self.V = None
+        self.V_next = None
+        self.global_step = None
+
+        # ops
+        self.train_op = None
+        self.reset_op = None
+        self.summaries_op = None
+
+        self.saver = None
 
         self.build_graph()
 
@@ -61,6 +75,7 @@ class BaseModel(metaclass=abc.ABCMeta):
                                                filename_suffix=str(time.time()))
 
         agents = [TDAgent(-1, model=self), TDAgent(1, model=self)]
+        keep_prob = 0.9  # TODO: вынести в аргументы
         for episode in range(n_episodes):
             if episode != 0 and episode % val_period == 0:
                 self.test(n_episodes=n_val)
@@ -85,15 +100,13 @@ class BaseModel(metaclass=abc.ABCMeta):
 
             z = max(0, state.winner)
 
-            _, global_step, summaries, _ = self.sess.run(
-                [self.train_op,
-                 self.global_step,
-                 self.summaries_op,
-                 self.reset_op],
-                feed_dict={self.x: x,
-                           self.V_next: np.array([[z]], dtype='float'),
-                           self.keep_prob: keep_prob}
-            )
+            ops = [self.train_op, self.global_step, self.summaries_op, self.reset_op]
+            feed_dict = {
+                self.x: x,
+                self.V_next: np.array([[z]], dtype='float'),
+                self.keep_prob: keep_prob
+            }
+            _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)
             print(f'Game: {episode} Winner: {z} in {step} turns')
@@ -105,12 +118,14 @@ class BaseModel(metaclass=abc.ABCMeta):
 
 class ModelTD(BaseModel):
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def build_graph(self):
         input_shape = TDAgent().feature_space_dim()
         self.x = tf.placeholder(shape=[1, input_shape], dtype=tf.float32)
         self.V_next = tf.placeholder(dtype=tf.float32)
+        self.keep_prob = tf.placeholder(dtype=tf.float32, shape=None, name="keep_prob")
+
         self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False)
 
         lambda_decay = tf.train.exponential_decay(0.9, self.global_step, 30000, 0.96, True)
@@ -120,14 +135,13 @@ class ModelTD(BaseModel):
         alpha = tf.maximum(0.01, alpha_decay, name='alpha')
 
         gamma = 0.99
-        keep_prob = 0.2
 
         self.hidden_sizes = self.hidden_sizes if self.hidden_sizes else [80]
-        h = hidden_sizes.pop(0)
+        h = self.hidden_sizes.pop(0)
         x = tf.layers.dense(self.x, h, tf.nn.relu)
-        for h in hidden_sizes:
+        for h in self.hidden_sizes:
             x = tf.layers.dense(x, h, tf.nn.relu)
-            x = tf.nn.dropout(x, keep_prob)
+            x = tf.nn.dropout(x, self.keep_prob)
 
         self.V = tf.layers.dense(x, 1, tf.nn.sigmoid)
 
@@ -178,9 +192,14 @@ class ModelTD(BaseModel):
 
 class ModelTDOnline(BaseModel):
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
+
+        self.V_old = None
+        self.V_trace = None
+        self.flag = None
 
     def build_graph(self):
+        # TODO: копипаста из ModelTD!
         input_shape = TDAgent().feature_space_dim()
         self.x = tf.placeholder(shape=[1, input_shape], dtype=tf.float32)
         self.V_next = tf.placeholder(dtype=tf.float32)
@@ -199,9 +218,9 @@ class ModelTDOnline(BaseModel):
         keep_prob = 0.2
 
         self.hidden_sizes = self.hidden_sizes if self.hidden_sizes else [80]
-        h = hidden_sizes.pop(0)
+        h = self.hidden_sizes.pop(0)
         x = tf.layers.dense(self.x, h, tf.nn.relu)
-        for h in hidden_sizes:
+        for h in self.hidden_sizes:
             x = tf.layers.dense(x, h, tf.nn.relu)
             x = tf.nn.dropout(x, keep_prob)
 

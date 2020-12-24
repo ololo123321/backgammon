@@ -22,13 +22,22 @@ if __name__ == '__main__':
     parser.add_argument('--n_episodes', type=int)
     parser.add_argument('--val_period', type=int)
     parser.add_argument('--n_val', type=int)
-    parser.add_argument('--restore_flag', action='store_true')
+    parser.add_argument('--restore', action='store_true')
     parser.add_argument('--play', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.set_defaults(n_episodes=10000, val_period=1000, n_val=100)
     args = parser.parse_args()
+    print(args)
     with tf.Session() as sess:
-        model = Model(sess, model_path, summary_path, checkpoint_path, None, args.restore)
+        model = Model(
+            sess=sess,
+            model_path=model_path,
+            summary_path=summary_path,
+            checkpoint_path=checkpoint_path,
+            hidden_sizes=None,
+            restore_flag=args.restore
+        )
+        print("keep_prob:", model.keep_prob)
         if args.test:
             model.test(n_episodes=1000)
         elif args.play:

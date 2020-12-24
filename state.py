@@ -125,7 +125,7 @@ class State:
 
     def clone(self):
         s = State()
-        for attr, value in self.__dict__().items():
+        for attr, value in vars(self).items():
             setattr(s, attr, value)
         return s
 
