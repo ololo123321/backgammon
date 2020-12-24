@@ -19,15 +19,15 @@ checkpoint_path = os.path.join(sys.path[0], 'checkpoints')
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--n_episodes', type=int)
-    parser.add_argument('--val_period', type=int)
-    parser.add_argument('--n_val', type=int)
+    parser.add_argument('--n_episodes', type=int, default=10000)
+    parser.add_argument('--val_period', type=int, val_period=500)
+    parser.add_argument('--n_val', type=int, default=100)
     parser.add_argument('--restore', action='store_true')
     parser.add_argument('--play', action='store_true')
     parser.add_argument('--test', action='store_true')
-    parser.set_defaults(n_episodes=10000, val_period=1000, n_val=100)
     args = parser.parse_args()
     print(args)
+
     with tf.Session() as sess:
         model = Model(
             sess=sess,
