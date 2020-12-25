@@ -3,6 +3,8 @@ from typing import List, Tuple, Union
 from collections import namedtuple
 from copy import deepcopy
 
+import numpy as np
+
 ROLL_TYPE = Union[Tuple[int, int], Tuple[int, int, int, int]]
 
 
@@ -14,16 +16,13 @@ def roll_dice(first_move: bool = False) -> ROLL_TYPE:
     https://nardy-wiki.ru/short-nardi - раздел "Розыгрыш первого хода"
     """
     r1, r2 = random.randint(1, 6), random.randint(1, 6)
-    if first_move:
-        if r1 == r2:
+    if r1 == r2:
+        if first_move:
             return roll_dice(first_move)
         else:
-            return r1, r2
-    else:
-        if r1 == r2:
             return (r1,) * 4
-        else:
-            return r1, r2
+    else:
+        return r1, r2
 
 
 class Board:
@@ -59,17 +58,20 @@ class Board:
         return self._towers
 
     @property
-    def state(self) -> Tuple:
+    def fingerprint(self) -> Tuple:
         """
-        hashable состояние доски
+        минимальное хэшируемое представление доски.
         """
         board = tuple(self._board)
         bar = self._bar[-1], self._bar[1]
         return board, bar
 
-    def reverse(self):
-        self._board = [-x for x in self._board[::-1]]
-        self._bar = {-k: v for k, v in self._bar.items()}
+    @property
+    def reversed(self):
+        board = [-x for x in self._board[::-1]]
+        bar = {-k: v for k, v in self._bar.items()}
+        b = Board(board=board, bar=bar)
+        return b
 
     def is_valid_move(self, start: int, end: int) -> bool:
         """
@@ -110,15 +112,19 @@ class Board:
         if end <= 23:
             self.add_piece(end)
 
-    def remove_piece(self, p):
+    def remove_piece(self, p: int):
+        """
+        Удалить фигуру с позиции p
+        :param p: номер позиции
+        :return:
+        """
         assert 0 <= p <= 23, f'invalid position: {p}'
         assert self._board[p] >= 1, f'position {p} is empty'
         self._board[p] -= 1  # убрать фигуру с позиции start
         # если на позиции start фигур не осталось, то удалить башню
         if self._board[p] == 0:
             self._towers.remove(p)
-        if p == self._t_min:
-            self._t_min = min(self._towers)  # TODO: сделать так, чтобы не надо было за O(n) обновлять минимум
+            self._t_min = min(self._towers)  # TODO: сделать обновление минимума не за O(n)
 
     def add_piece(self, p: int):
         assert 0 <= p <= 23, f'invalid position: {p}'
@@ -150,11 +156,11 @@ class State:
     """
 
     def __init__(
-            self,
-            board: Board = None,
-            roll: ROLL_TYPE = None,
-            winner: int = None,
-            sign: int = 1
+        self,
+        board: Board = None,
+        roll: ROLL_TYPE = None,
+        winner: int = None,
+        sign: int = 1
     ):
         self.board = board if board is not None else Board()
         self.roll = roll if roll is not None else roll_dice(first_move=True)
@@ -162,27 +168,39 @@ class State:
         self.sign = sign  # нужен только для определения победителя
 
     @property
-    def moves(self) -> List[Board]:
+    def transitions(self) -> List:
+        """
+        Список возможных переходов
+        """
+        if self.winner is not None:
+            print(f"game over due to winner found: {self.winner}")
+            return []
+
         leaves = {}
         max_depth = len(self.roll)
         is_double = max_depth == 4
 
         # узел игрового дерева
-        Node = namedtuple("Node", ["board", "depth"])
+        Node = namedtuple("Node", ["board", "depth", "roll", "is_game_over"])
 
         def add_leaf(node):
-            leaves[node.board.state] = node
+            leaves[node.board.fingerprint] = node
 
-        def extend(node: Node, roll: Tuple) -> bool:
-            winner_found = False
+        def extend(node: Node):
+            """
+            Построение игрового дерева, определяющего все возможные варианты ходов.
+            Условия завершения обхода:
+            1. Достигнута максимальная глубина, определяемая выпавшими кубиками
+            2. Достигнуто победное состояние
+            """
 
             # сходили максимальное число раз
             if node.depth == max_depth:
                 add_leaf(node)
-                return winner_found
+                return
 
             # выбираем кубик для хода
-            step = roll[node.depth]
+            step = node.roll[node.depth]
 
             # если есть съеденные фигурки
             if node.board.bar[1]:
@@ -192,15 +210,15 @@ class State:
                 # если можно съеденную фигурку поставить на доску:
                 if board_copy[home_position] >= -1:
                     board_copy.add_piece(home_position)
-                    child = Node(board=board_copy, depth=node.depth + 1)
-                    extend(node=child, roll=roll)
+                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                    extend(child)
                 else:
                     # если дубль, то мы уже не можем сделать ход
                     if is_double:
                         add_leaf(node)
                     else:
-                        child = Node(board=node.board, depth=node.depth + 1)
-                        extend(node=child, roll=roll)
+                        child = Node(board=node.board, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                        extend(child)
             else:
                 # пытаемся сделать ход с каждой башни
                 is_leaf = True
@@ -211,42 +229,59 @@ class State:
                         board_copy = deepcopy(node.board)
                         board_copy.move(start=start, end=end)
                         if board_copy.is_empty:
-                            add_leaf(node)
-                            winner_found = True
-                            return winner_found
+                            # пустая доска ~ текущий игрок победил
+                            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=True)
+                            add_leaf(child)
+                            return
                         else:
-                            child = Node(board=board_copy, depth=node.depth + 1)
-                            extend(node=child, roll=roll)
+                            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                            extend(child)
                 # нельзя сделать ни одного хода
                 if is_leaf:
                     add_leaf(node)
 
-        root = Node(board=self.board, depth=0)
-        is_game_over = extend(node=root, roll=self.roll)
-        if is_game_over:
-            self.winner = self.sign
-            return []
-        elif len(self.roll) == 2:
-            is_game_over = extend(node=root, roll=self.roll[::-1])
-            if is_game_over:
-                self.winner = self.sign
-                return []
-            else:
-                if leaves:
-                    max_depth = max(node.depth for node in leaves.values())
-                    boards = [node.board for node in leaves.values() if node.depth == max_depth]
-                    return boards
-                else:
-                    return []
+        root = Node(board=self.board, depth=0, roll=self.roll, is_game_over=False)
+        extend(root)
+        if len(self.roll) == 2:
+            root = Node(board=self.board, depth=0, roll=self.roll[::-1], is_game_over=False)
+            extend(root)
 
-    def clone(self):
-        s = State()
-        for attr, value in vars(self).items():
-            setattr(s, attr, value)
-        return s
+        # гарантируется непустота leaves
+        # игрок обязан ходить максимально возможное количество раз
+        max_depth = max(node.depth for node in leaves.values())
+        res = []
+        roll_next = roll_dice()
+        for node in leaves.values():
+            if node.is_game_over:
+                s = State(board=node.board, roll=roll_next, winner=self.sign, sign=self.sign)
+                res.append(s.reversed)
+            elif node.depth == max_depth:
+                s = State(board=node.board, roll=roll_next, winner=None, sign=self.sign)
+                res.append(s.reversed)
+        return res
 
-    def update(self, move: Board):
-        self.board = move  # обновление доски
-        self.sign *= -1  # обновление знака текущего игрока
-        self.board.reverse()  # разворот доски к новому игрока
-        self.roll = roll_dice()  # обновление кубиков
+    @property
+    def features(self) -> np.ndarray:
+        board_pos = self.board if self.sign == 1 else self.board.reversed
+        features = []
+        for sgn in [1, -1]:
+            on_board = 0
+            on_bar = board_pos.bar[sgn]
+            for p in board_pos.board:
+                v = abs(p) if np.sign(p) == sgn else 0
+                on_board += v
+                features.append(v)
+            features.append(on_board)  # число фигур на доске
+            features.append(on_bar)  # число съеденных фигур
+            features.append(15 - on_board - on_bar)  # число выкинутых фигур
+        features.append(int(self.sign == 1))  # кто ходит
+        return np.array(features).reshape(1, -1)
+
+    @property
+    def copy(self):
+        """точная копия состояния"""
+        return deepcopy(self)
+
+    @property
+    def reversed(self):
+        return State(board=self.board.reversed, roll=self.roll, winner=self.winner, sign=self.sign * -1)

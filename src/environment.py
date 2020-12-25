@@ -16,8 +16,8 @@ class Environment:
             self.state.sign = agent.sign
             if self.verbose:
                 self.draw(agent)
-            move = agent.choose_move(self.state)
-            self.state.update(move)
+            transitions = self.state.transitions
+            self.state = agent.ply(transitions)
             self.winner = self.state.winner
             i = (i + 1) % 2
 

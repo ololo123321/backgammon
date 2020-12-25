@@ -140,16 +140,16 @@ def test_board_move():
     assert True
 
 
-@pytest.mark.parametrize("board, roll, expected", [
-    pytest.param(
-        Board(),
-        (1, 2),
-        {
-            ()
-        }
-    )
-])
-def test_state_moves(board, roll, expected):
-    s = State(board=board, roll=roll)
-    actual = {x.state for x in s.moves}
-    assert actual == expected
+# @pytest.mark.parametrize("board, roll, expected", [
+#     pytest.param(
+#         Board(),
+#         (1, 2),
+#         {
+#             ()
+#         }
+#     )
+# ])
+# def test_state_moves(board, roll, expected):
+#     s = State(board=board, roll=roll)
+#     actual = {x.state for x in s.moves}
+#     assert actual == expected

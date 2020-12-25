@@ -40,6 +40,7 @@ def extract_features(state):
     return np.array(features).reshape(1, -1)
 
 
+# TODO: реализовать
 def choose_move_trained(state, weights=None):
     """
     Модель предсказывает вероятность выигрыша игрока +1.
