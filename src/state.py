@@ -71,11 +71,28 @@ class Board:
         self._board = [-x for x in self._board[::-1]]
         self._bar = {-k: v for k, v in self._bar.items()}
 
-    def is_valid_move(self, start: int, step: int) -> bool:
-        end = start + step
+    def is_valid_move(self, start: int, end: int) -> bool:
+        """
+        :param start:
+        :param end:
+        :return:
+        """
+        assert 0 <= start <= 23, f"invalid start position: {start}"
+        assert self._bar[1] == 0, f'there is lock on moves due to figures on bar'
+
+        # end = start + step
+        step = end - start
+        # перемещение фигуры на доске
         if end <= 23:
-            return self._board[end] >= -1  # <= 1 фигур противника
+            # 1. на позиции start должна быть фигура
+            # 2. на позиции end должна быть либо одна фигура противника, либо пусто, либо свои фигуры
+            return (self._board[start] >= 1) and (self._board[end] >= -1)
+        # выкидывание фигуры с доски
         else:
+            # 1. все фигуры в зоне [18, 23]
+            # 2.1. есть фигура на позиции 24 - step
+            # 2.2. все фигуры расположены либо на позиции в зоне выкидывания,
+            # соответствующей номеру на кубике, либо левее
             return (self._t_min >= 18) and ((step == 24 - start) or (start == self._t_min))
 
     def is_empty(self):
@@ -83,6 +100,12 @@ class Board:
         return len(self._towers) == 0
 
     def move(self, start, end):
+        """
+        Предполагается, что валидность хода уже проверена
+        :param start: позиция начала
+        :param end: позиция конца. возможно
+        :return:
+        """
         self.remove_piece(start)
         if end <= 23:
             self.add_piece(end)
@@ -160,16 +183,16 @@ class State:
                 return winner_found
 
             # выбираем кубик для хода
-            r = roll[node.depth]
+            step = roll[node.depth]
 
             # если есть съеденные фигурки
             if node.board.bar[1]:
                 board_copy = deepcopy(node.board)
+                home_position = step - 1
 
                 # если можно съеденную фигурку поставить на доску:
-                if board_copy[r - 1] >= -1:
-                    # add_piece(board_, bar_, r - 1, towers_)
-                    board_copy.add_piece(r - 1)
+                if board_copy[home_position] >= -1:
+                    board_copy.add_piece(home_position)
                     child = Node(board=board_copy, depth=node.depth + 1)
                     extend(node=child, roll=roll)
                 else:
@@ -182,11 +205,12 @@ class State:
             else:
                 # пытаемся сделать ход с каждой башни
                 is_leaf = True
-                for t in node.board.towers:
-                    if node.board.is_valid_move(start=t, step=r):
+                for start in node.board.towers:
+                    end = start + step
+                    if node.board.is_valid_move(start=start, end=end):
                         is_leaf = False
                         board_copy = deepcopy(node.board)
-                        board_copy.move(start=t, end=t + r)
+                        board_copy.move(start=start, end=end)
                         if board_copy.is_empty:
                             add_leaf(node)
                             winner_found = True

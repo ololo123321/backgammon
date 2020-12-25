@@ -2,18 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4f67037b-4bc7-48f3-84e2-10e23fead31f" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/test_state.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/environment.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/nodes.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/state.cpp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/state.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/state_long.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/state.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/state.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_state.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_state.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -24,25 +14,30 @@
   <component name="FileEditorManager">
     <leaf>
       <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/tests/test_state.py">
+        <entry file="file://$PROJECT_DIR$/src/state.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="15" column="12" selection-start-line="15" selection-start-column="12" selection-end-line="15" selection-end-column="12" />
+            <state relative-caret-position="1744">
+              <caret line="216" column="32" lean-forward="true" selection-start-line="216" selection-start-column="32" selection-end-line="216" selection-end-column="32" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
+                <element signature="e#204#656#0" />
+                <element signature="e#2152#3126#0" />
+                <element signature="e#2627#3069#0" />
+                <element signature="e#2698#3310#0" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/state.py">
+        <entry file="file://$PROJECT_DIR$/tests/test_state.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="315">
-              <caret line="21" column="9" lean-forward="true" selection-start-line="21" selection-start-column="9" selection-end-line="21" selection-end-column="9" />
+            <state relative-caret-position="381">
+              <caret line="128" column="93" selection-start-line="128" selection-start-column="93" selection-end-line="128" selection-end-column="93" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
-                <element signature="e#626#3310#0" />
+                <element signature="e#241#465#0" />
+                <element signature="e#1110#2715#0" />
               </folding>
             </state>
           </provider>
@@ -78,8 +73,8 @@
         <option value="$PROJECT_DIR$/state.py" />
         <option value="$PROJECT_DIR$/requirements.txt" />
         <option value="$PROJECT_DIR$/src/__init__.py" />
-        <option value="$PROJECT_DIR$/src/state.py" />
         <option value="$PROJECT_DIR$/tests/test_state.py" />
+        <option value="$PROJECT_DIR$/src/state.py" />
       </list>
     </option>
   </component>
@@ -112,16 +107,6 @@
               <item name="backgammon" type="b2602c69:ProjectViewProjectNode" />
               <item name="backgammon" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="backgammon" type="b2602c69:ProjectViewProjectNode" />
-              <item name="backgammon" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="backgammon" type="b2602c69:ProjectViewProjectNode" />
-              <item name="backgammon" type="462c0819:PsiDirectoryNode" />
-              <item name="tests" type="462c0819:PsiDirectoryNode" />
-            </path>
           </expand>
           <select />
         </subPane>
@@ -130,6 +115,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
     <property name="WebServerToolWindowPanel.toolwindow.highlight.mappings" value="true" />
     <property name="WebServerToolWindowPanel.toolwindow.highlight.symlinks" value="true" />
@@ -157,27 +143,53 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for test_state.test_roll_dice">
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true">
+  <component name="RunManager" selected="Python tests.pytest for test_state.test_board_is_valid_move">
+    <configuration name="pytest for test_state.test_board_add_piece" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="backgammon" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_state.test_board_add_piece&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for test_state.test_board_is_valid_move" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="backgammon" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_state.test_board_is_valid_move&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for test_state.test_board_remove_piece" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="backgammon" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_state.test_board_remove_piece&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
     <configuration name="pytest for test_state.test_roll_dice" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
@@ -196,10 +208,29 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest in test_state.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="backgammon" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/tests/test_state.py&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for test_state.test_board_is_valid_move" />
+        <item itemvalue="Python tests.pytest in test_state.py" />
+        <item itemvalue="Python tests.pytest for test_state.test_board_add_piece" />
+        <item itemvalue="Python tests.pytest for test_state.test_board_remove_piece" />
         <item itemvalue="Python tests.pytest for test_state.test_roll_dice" />
-        <item itemvalue="Python.main" />
       </list>
     </recent_temporary>
   </component>
@@ -213,37 +244,60 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1608825031070</updated>
-      <workItem from="1608825035227" duration="13732000" />
+      <workItem from="1608825035227" duration="19195000" />
     </task>
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="pytest_for_test_state_test_roll_dice - 2020.12.25 at 00h 31m 05s.xml">
-      <configuration name="pytest for test_state.test_roll_dice" configurationId="tests" />
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 08h 53m 29s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
     </history-entry>
-    <history-entry file="pytest_for_test_state_test_roll_dice - 2020.12.25 at 00h 31m 31s.xml">
-      <configuration name="pytest for test_state.test_roll_dice" configurationId="tests" />
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 08h 56m 10s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 08h 56m 33s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 08h 57m 14s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 08h 58m 25s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 08h 59m 55s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 09h 00m 21s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 09h 01m 12s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 09h 03m 16s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
+    </history-entry>
+    <history-entry file="pytest_for_test_state_test_board_is_valid_move - 2020.12.25 at 09h 10m 33s.xml">
+      <configuration name="pytest for test_state.test_board_is_valid_move" configurationId="tests" />
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="13732000" />
+    <option name="totallyTimeSpent" value="19195000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="65" y="-4" width="1301" height="772" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info id="Favorites" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.24940239" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.24940239" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Docker" show_stripe_button="false" />
       <window_info anchor="bottom" id="Database Changes" />
       <window_info anchor="bottom" id="Version Control" />
       <window_info anchor="bottom" id="Python Console" />
-      <window_info anchor="bottom" id="Terminal" weight="0.5695067" />
+      <window_info anchor="bottom" id="Terminal" weight="0.46038863" />
       <window_info anchor="bottom" id="Event Log" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.58744395" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.35276532" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -260,8 +314,12 @@
     <option name="version" value="1" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/backgammon$pytest_in_test_state_py.coverage" NAME="pytest in test_state.py Coverage Results" MODIFIED="1608846382889" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/backgammon$pytest_for_test_state_test_board_add_piece.coverage" NAME="pytest for test_state.test_board_add_piece Coverage Results" MODIFIED="1608846370476" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/backgammon$pytest_for_test_state_test_roll_dice.coverage" NAME="pytest for test_state.test_roll_dice Coverage Results" MODIFIED="1608845490823" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/backgammon$main.coverage" NAME="main Coverage Results" MODIFIED="1608826321818" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/backgammon$pytest_for_test_state_test_board_remove_piece.coverage" NAME="pytest for test_state.test_board_remove_piece Coverage Results" MODIFIED="1608846116254" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/backgammon$pytest_for_test_state_test_board_is_valid_move.coverage" NAME="pytest for test_state.test_board_is_valid_move Coverage Results" MODIFIED="1608876632396" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/nodes.py">
@@ -380,16 +438,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="272">
-          <caret line="29" lean-forward="true" selection-start-line="29" selection-end-line="29" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/requirements.txt">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="15">
@@ -400,23 +448,38 @@
     <entry file="file://$PROJECT_DIR$/src/__init__.py">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/state.py">
+    <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="315">
-          <caret line="21" column="9" lean-forward="true" selection-start-line="21" selection-start-column="9" selection-end-line="21" selection-end-column="9" />
+        <state relative-caret-position="297">
+          <caret line="29" lean-forward="true" selection-start-line="29" selection-end-line="29" />
           <folding>
-            <element signature="e#0#13#0" expanded="true" />
-            <element signature="e#626#3310#0" />
+            <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests/test_state.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="15" column="12" selection-start-line="15" selection-start-column="12" selection-end-line="15" selection-end-column="12" />
+        <state relative-caret-position="381">
+          <caret line="128" column="93" selection-start-line="128" selection-start-column="93" selection-end-line="128" selection-end-column="93" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#241#465#0" />
+            <element signature="e#1110#2715#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/state.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1744">
+          <caret line="216" column="32" lean-forward="true" selection-start-line="216" selection-start-column="32" selection-end-line="216" selection-end-column="32" />
+          <folding>
+            <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#204#656#0" />
+            <element signature="e#2152#3126#0" />
+            <element signature="e#2627#3069#0" />
+            <element signature="e#2698#3310#0" />
           </folding>
         </state>
       </provider>
