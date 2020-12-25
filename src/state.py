@@ -145,9 +145,8 @@ class State:
 
     Интерфейс:
     s = State()
-    next_states = s.moves(roll)
-    best_move = moves[0]
-    s.update(move)
+    transitions = s.transitions
+    s = choose_best_state(transitions)
     """
 
     def __init__(

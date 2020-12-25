@@ -1,11 +1,10 @@
-import numpy as np
 import random
 from multiprocessing import Pool
 from abc import ABCMeta, abstractmethod
 
-from state import State
-from utils import extract_features, choose_move_trained, sigmoid
-from nodes import MCNode, GameTreeNode
+from .state import State
+from .utils import extract_features, choose_move_trained
+from .nodes import MCNode, GameTreeNode
 
 
 class BaseAgent(metaclass=ABCMeta):

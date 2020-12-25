@@ -5,10 +5,10 @@ from abc import ABC, abstractmethod
 import numpy as np
 import tensorflow as tf
 
-from state import State
-from environment import Environment
-from agents import HumanAgent, RandomAgent, TDAgent
-from utils import extract_features
+from .state import State
+from .environment import Environment
+from .agents import HumanAgent, RandomAgent, TDAgent
+from .utils import extract_features
 
 
 class BaseModel(ABC):
@@ -66,13 +66,15 @@ class BaseModel(ABC):
             else:
                 random_wins += 1
 
-            print('Episode: {}, TD-Agent: {}, RandomAgent: {}'.format(i, td_wins, random_wins))
+            print(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
 
     def train(self, n_episodes=10000, val_period=1000, n_val=100):
         tf.train.write_graph(self.sess.graph_def, self.model_path, 'td_gammon.pb', as_text=False)
-        summary_writer = tf.summary.FileWriter(logdir=self.summary_path,
-                                               graph=self.sess.graph,
-                                               filename_suffix=str(time.time()))
+        summary_writer = tf.summary.FileWriter(
+            logdir=self.summary_path,
+            graph=self.sess.graph,
+            filename_suffix=str(time.time())
+        )
 
         agents = [TDAgent(-1, model=self), TDAgent(1, model=self)]
         keep_prob = 0.9  # TODO: вынести в аргументы
@@ -115,6 +117,33 @@ class BaseModel(ABC):
         summary_writer.close()
         self.test(n_episodes=1000)
 
+    def export_inference_graph(self, export_dir):
+        builder = tf.saved_model.builder.SavedModelBuilder(export_dir)
+
+        inputs = {
+            "state": tf.saved_model.utils.build_tensor_info(self.x),
+        }
+
+        outputs = {
+            self.V.name: tf.saved_model.utils.build_tensor_info(self.V)
+        }
+
+        prediction_signature = tf.saved_model.signature_def_utils.build_signature_def(
+            inputs=inputs,
+            outputs=outputs,
+            method_name=tf.saved_model.PREDICT_METHOD_NAME
+        )
+
+        builder.add_meta_graph_and_variables(
+            sess=self.sess,
+            tags=[tf.saved_model.SERVING],
+            signature_def_map={
+                tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY: prediction_signature
+            },
+        )
+
+        builder.save()
+
 
 class ModelTD(BaseModel):
     def __init__(self, *args, **kwargs):
@@ -122,8 +151,8 @@ class ModelTD(BaseModel):
 
     def build_graph(self):
         input_shape = TDAgent().feature_space_dim()
-        self.x = tf.placeholder(shape=[1, input_shape], dtype=tf.float32)
-        self.V_next = tf.placeholder(dtype=tf.float32)
+        self.x = tf.placeholder(shape=[1, input_shape], dtype=tf.float32, name="state")
+        self.V_next = tf.placeholder(dtype=tf.float32, shape=None, name="V")
         self.keep_prob = tf.placeholder(dtype=tf.float32, shape=None, name="keep_prob")
 
         self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False)

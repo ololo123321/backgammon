@@ -1,5 +1,5 @@
-from state import State
 import random
+from .state import State
 
 
 class Environment:

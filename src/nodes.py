@@ -1,5 +1,5 @@
 import random
-from utils import extract_features, get_reward, choose_move_trained
+from .utils import extract_features, get_reward, choose_move_trained
 
 
 class MCNode:
@@ -27,8 +27,9 @@ class MCNode:
         r = r if self.sign == 1 else 1 - r
         return child.wins / child.visits + self.C * r * self.visits ** 0.5 / child.visits
 
-    def choose_child(self):
-        return sorted(self.children, key=lambda c: self.ucb(c))[-1]
+    @property
+    def best_child(self):
+        return max(self.children, key=lambda child: self.ucb(child))
 
     def add_child(self, move, state):
         child = MCNode(sign=self.sign, move=move, parent=self, state=state)
@@ -66,7 +67,7 @@ class MCNode:
 
 
 class GameTreeNode:
-    def __init__(self, sign=1, parent=None, state=None, weights=None, r=None, p=1, k=2):
+    def __init__(self, sign=1, parent=None, state=None, weights=None, r=None, p=1.0, k=2):
         self.sign = sign  # данный знак присваивается всем узлам дерева
         self.parent = parent
         self.state = state
