@@ -25,7 +25,14 @@ def roll_dice(first_move: bool = False) -> ROLL_TYPE:
         return r1, r2
 
 
-class Board:
+class ReprMixin:
+    def __repr__(self):
+        class_name = self.__class__.__name__
+        params = ", ".join(f"{k}={v}" for k, v in vars(self).items())
+        return f'{class_name}({params})'
+
+
+class Board(ReprMixin):
     def __init__(self, board=None, bar=None):
         if board is not None:
             self._board = board
@@ -73,6 +80,11 @@ class Board:
         b = Board(board=board, bar=bar)
         return b
 
+    @property
+    def is_empty(self) -> bool:
+        """не осталось своих фигур"""
+        return len(self._towers) == 0
+
     def is_valid_move(self, start: int, end: int) -> bool:
         """
         :param start:
@@ -96,10 +108,6 @@ class Board:
             # 2.2. все фигуры расположены либо на позиции в зоне выкидывания,
             # соответствующей номеру на кубике, либо левее
             return (self._t_min >= 18) and ((step == 24 - start) or (start == self._t_min))
-
-    def is_empty(self):
-        """не осталось своих фигур"""
-        return len(self._towers) == 0
 
     def move(self, start, end):
         """
@@ -141,8 +149,12 @@ class Board:
             if p < self._t_min:
                 self._t_min = p
 
+    @property
+    def copy(self):
+        return deepcopy(self)
 
-class State:
+
+class State(ReprMixin):
     """
     Класс состояния игры. Характеризуется:
     - выпавшими кубиками,
@@ -193,7 +205,6 @@ class State:
             1. Достигнута максимальная глубина, определяемая выпавшими кубиками
             2. Достигнуто победное состояние
             """
-
             # сходили максимальное число раз
             if node.depth == max_depth:
                 add_leaf(node)
@@ -204,7 +215,7 @@ class State:
 
             # если есть съеденные фигурки
             if node.board.bar[1]:
-                board_copy = deepcopy(node.board)
+                board_copy = node.board.copy
                 home_position = step - 1
 
                 # если можно съеденную фигурку поставить на доску:
@@ -226,7 +237,7 @@ class State:
                     end = start + step
                     if node.board.is_valid_move(start=start, end=end):
                         is_leaf = False
-                        board_copy = deepcopy(node.board)
+                        board_copy = node.board.copy
                         board_copy.move(start=start, end=end)
                         if board_copy.is_empty:
                             # пустая доска ~ текущий игрок победил
@@ -254,10 +265,10 @@ class State:
         for node in leaves.values():
             if node.is_game_over:
                 s = State(board=node.board, roll=roll_next, winner=self.sign, sign=self.sign)
-                res.append(s.reversed)
+                res.append(s)
             elif node.depth == max_depth:
                 s = State(board=node.board, roll=roll_next, winner=None, sign=self.sign)
-                res.append(s.reversed)
+                res.append(s)
         return res
 
     @property
@@ -285,3 +296,19 @@ class State:
     @property
     def reversed(self):
         return State(board=self.board.reversed, roll=self.roll, winner=self.winner, sign=self.sign * -1)
+
+
+if __name__ == '__main__':
+    for i in range(1, 7):
+        for j in range(i, 7):
+            if i != j:
+                roll = i, j
+            else:
+                roll = i, i, i, i
+            ss = State(roll=roll)
+            print(roll, len(ss.transitions))
+    # roll = 1, 5
+    # s = State(roll=roll)
+    # transitions = s.transitions
+    # for t in transitions:
+    #     print(t)

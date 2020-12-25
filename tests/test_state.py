@@ -1,4 +1,5 @@
 import pytest
+from collections import namedtuple
 
 from src.state import roll_dice, Board, State
 
@@ -140,16 +141,58 @@ def test_board_move():
     assert True
 
 
-# @pytest.mark.parametrize("board, roll, expected", [
-#     pytest.param(
-#         Board(),
-#         (1, 2),
-#         {
-#             ()
-#         }
-#     )
-# ])
-# def test_state_moves(board, roll, expected):
-#     s = State(board=board, roll=roll)
-#     actual = {x.state for x in s.moves}
-#     assert actual == expected
+Case = namedtuple("Case", ["board", "bar", "towers", "t_min"])
+
+
+"""
+II                               I 
+11 10 9  8  7  6  5  4  3  2  1  0
+x           o     o              x
+x           o     o              x
+x           o     o
+x                 o
+x                 o
+-----------------------------------
+o                 x
+o                 x
+o           x     x
+o           x     x              o
+o           x     x              o
+12 13 14 15 16 17 18 19 20 21 22 23
+            III   IV
+"""
+
+
+@pytest.mark.parametrize("board, roll, expected", [
+    pytest.param(
+        Board(),
+        (1, 5),
+        # первый ход 1 возможен с башен 1, 3, 4
+        # первый ход 5 возможен с башен 2, 3
+        # одной шашкой все ходы можно сходить с 1, 2, 3 башен
+        # в одно и то же состояние ведут следующие пути:
+        # * (11, 16) -> (16, 17); (16, 17) -> (11, 15)
+        # таким образом, итоговое число ходов равно 2 * 3 + 3 - 1 = 8
+        {
+            (1, 1, 0, 0, 0, -5, 0, -3, 0, 0, 0, 4, -5, 0, 0, 0, 4, 0, 5, 0, 0, 0, 0, -2),  # (0, 1), (11, 16)
+            (1, 1, 0, 0, 0, -5, 0, -3, 0, 0, 0, 5, -5, 0, 0, 0, 2, 0, 5, 0, 0, 1, 0, -2),  # (0, 1), (16, 21)
+
+            (2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 4, -5, 0, 0, 0, 3, 1, 5, 0, 0, 0, 0, -2),  # (16, 17), (11, 16)
+            (2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 5, -5, 0, 0, 0, 1, 1, 5, 0, 0, 1, 0, -2),  # (16, 17), (16, 21)
+
+            (2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 4, -5, 0, 0, 0, 4, 0, 4, 1, 0, 0, 0, -2),  # (18, 19), (11, 16)
+            (2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 5, -5, 0, 0, 0, 2, 0, 4, 1, 0, 1, 0, -2),  # (18, 19), (16, 21)
+
+            (1, 0, 0, 0, 0, -5, 1, -3, 0, 0, 0, 5, -5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2),  # (0, 1), (1, 5)
+            (2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 5, -5, 0, 0, 0, 2, 0, 5, 0, 0, 0, 1, -2),  # (16, 17), (17, 22)
+        }
+    )
+])
+def test_state_moves(board, roll, expected):
+    s = State(board=board, roll=roll)
+    actual = {tuple(x.board.board) for x in s.transitions}
+    # print(expected - actual)
+    # print('123')
+    # print(actual - expected)
+    assert len(actual) == len(expected)
+    assert actual == expected

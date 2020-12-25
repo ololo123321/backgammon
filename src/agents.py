@@ -1,9 +1,11 @@
 import random
-from typing import List, Tuple
+import re
+from typing import List
 from multiprocessing import Pool
 from abc import ABC, abstractmethod
+from collections import namedtuple
 
-from .state import State
+from .state import Board, State
 from .utils import extract_features, choose_move_trained
 from .nodes import MCNode, GameTreeNode
 
@@ -37,6 +39,9 @@ class InvalidInput(Exception):
     """
 
 
+Move = namedtuple("Move", ["start", "end"])
+
+
 class HumanAgent(BaseAgent):
     """
     1,2 - обычный ход
@@ -55,8 +60,8 @@ class HumanAgent(BaseAgent):
             return transitions[0]
 
         turn = self.get_input()
-        board_new = self.run_turn(turn, state.board)
         board2state = {s.board.fingerprint: s for s in transitions}
+        board_new = self.run_turn(turn=turn, board=state.board)
         if board_new in board2state:
             return board2state[board_new]
 
@@ -75,7 +80,7 @@ class HumanAgent(BaseAgent):
             print(f'Invalid input: {turn}')
             return self.get_input()
 
-    def transform_turn(self, turn_str: str) -> List[Tuple[int, int]]:
+    def transform_turn(self, turn_str: str) -> List[Move]:
         turn = []
         moves = turn_str.split()
         if len(moves) > 4:
@@ -89,42 +94,28 @@ class HumanAgent(BaseAgent):
         return turn
 
     @staticmethod
-    def transform_move(move: str) -> Tuple[int, int]:
-        try:
-            start, end = move.split(',')
-            start, end = int(start), int(end)
-        except ValueError:
+    def transform_move(move: str) -> Move:
+        if not re.fullmatch(r'\d+,\d+', move):
             raise InvalidInput(f"unable to parse move {move}")
 
-        if (0 <= start <= 23 and -1 <= end <= 23) or (-1 <= start <= 23 and 0 <= end <= 23):
-            return start, end
+        move = Move(*map(int, move.split(',')))
+
+        if (0 <= move.start <= 23 and -1 <= move.end <= 23) or (-1 <= move.start <= 23 and 0 <= move.end <= 23):
+            return move
         else:
-            raise InvalidInput(f"invalid positions: start: {start}, end: {end}")
+            raise InvalidInput(f"invalid positions: start: {move.start}, end: {move.end}")
 
     @staticmethod
-    def run_move(s, move):
-        start, end = move
-        if 0 <= start <= 23 and 0 <= end <= 23:  # обычный ход
-            s[start] -= 1
-            if s[end] >= 0:
-                s[end] += 1
-            else:
-                s[end] = 1
-        elif 0 <= start <= 23 and end == -1:  # возврат
-            if s[start] >= 0:
-                s[start] += 1
-            else:
-                s[start] = 1
-        elif start == -1 and 0 <= end <= 23:  # выкидывание
-            s[end] -= 1
-        return s
-
-    def run_turn(self, turn, board):
-        board_new = board.copy()
-        while turn:
-            move = turn.pop(0)
-            self.run_move(board_new, move)
-        return tuple(board_new)
+    def run_turn(turn: List[Move], board: Board) -> Board:
+        board_copy = board.copy
+        for move in turn:
+            if (0 <= move.start <= 23) and (0 <= move.end <= 23):
+                board_copy.move(start=move.start, end=move.end)
+            elif (move.start == -1) and (0 <= move.end <= 23):
+                board_copy.remove_piece(move.end)
+            elif (0 <= move.start <= 23) and (move.end == -1):
+                board_copy.add_piece(move.start)
+        return board_copy
 
 
 class TDAgent(BaseAgent):
@@ -137,8 +128,6 @@ class TDAgent(BaseAgent):
         """
         Модель предсказывает вероятность выигрыша игрока +1.
         Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
-
-        У аргумента должен быть метод get_moves() и атрибут sign
         """
         v_best = -1
         s_best = None
