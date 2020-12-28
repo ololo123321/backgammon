@@ -11,19 +11,20 @@ class Environment:
 
     def play(self):
         i = random.randint(0, 1)
-        step = 0
-        while not self.winner:
+        # step = 0
+        while self.winner is None:
             agent = self.agents[i]
             self.state.sign = agent.sign
             if self.verbose:
                 self.draw(agent)
-            self.state = agent.ply(self.state)
-            self.winner = self.state.winner
+            s = agent.ply(self.state)
+            self.state = s.reversed
+            self.winner = s.winner
             i = (i + 1) % 2
-            step += 1
-            if step > 200:
-                print(self.state)
-                raise
+            # step += 1
+            # if step > 200:
+            #     print(self.state)
+            #     raise
 
     def draw(self, agent):
         if agent.sign == 1:

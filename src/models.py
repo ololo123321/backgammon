@@ -25,6 +25,7 @@ class BaseModel(ABC):
         self.V = None
         self.V_next = None
         self.global_step = None
+        self.loss = None
 
         # ops
         self.train_op = None
@@ -88,10 +89,15 @@ class BaseModel(ABC):
             state.sign = agent.sign
             x = state.features
             step = 0
-            while not state.winner:
-                # print(f"step {step} starts")
+            while state.winner is None:
+                assert state.sign == agent.sign
+                # print('=' * 10, f"step {step} starts", '=' * 10)
+                # print("current agent:", agent.sign)
+                # print("current state:", state)
                 state = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
+                # print("chosen state:", state)
                 state = state.reversed  # развернули состояние к другому игроку
+                # print("reversed state:", state)
                 i = (i + 1) % 2
                 agent = agents[i]  # сменили игрока
                 x_next = state.features
@@ -100,23 +106,27 @@ class BaseModel(ABC):
                 self.sess.run(self.train_op, feed_dict=feed_dict)
                 x = x_next
                 step += 1
-                if step > 200:
-                    print(state)
-                    raise
+                # if step > 200:
+                #     print(state)
+                #     raise
+                # if step == 5:
+                #     raise
 
             z = max(0, state.winner)
 
             ops = [self.train_op, self.global_step, self.summaries_op, self.reset_op]
             feed_dict = {
                 self.x: x,
-                self.V_next: np.array([[z]], dtype='float'),
+                self.V_next: np.array([[z]], dtype=np.float32),
                 self.keep_prob: keep_prob
             }
             _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)
             print(f'Game: {episode} Winner: {z} in {step} turns')
-            self.saver.save(self.sess, os.path.join(self.checkpoint_path, 'checkpoint'), global_step=global_step)
+            # self.saver.save(self.sess, os.path.join(self.checkpoint_path, 'checkpoint'), global_step=global_step)
+
+            # raise
 
         summary_writer.close()
         self.test(n_episodes=1000)
@@ -161,13 +171,13 @@ class ModelTD(BaseModel):
 
         self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False)
 
-        lambda_decay = tf.train.exponential_decay(0.9, self.global_step, 30000, 0.96, True)
+        lambda_decay = tf.train.exponential_decay(0.9, self.global_step, 30000, 0.96, True)  # TODO: вынести в параметры
         lamda = tf.maximum(0.1, lambda_decay, name='lambda')
 
-        alpha_decay = tf.train.exponential_decay(0.1, self.global_step, 40000, 0.96, True)
+        alpha_decay = tf.train.exponential_decay(0.1, self.global_step, 40000, 0.96, True)  # TODO: вынести в параметры
         alpha = tf.maximum(0.01, alpha_decay, name='alpha')
 
-        gamma = 0.99
+        gamma = tf.constant(0.99)  # TODO: вынести в параметры
 
         self.hidden_sizes = self.hidden_sizes if self.hidden_sizes else [80]
         h = self.hidden_sizes.pop(0)

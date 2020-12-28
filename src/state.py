@@ -282,6 +282,9 @@ class State(ReprMixin):
 
     @property
     def features(self) -> np.ndarray:
+        """
+        Признаковое описание состояня. Строится от лица игрока +1 независимо от того, какой игрок ходит.
+        """
         board_pos = self.board if self.sign == 1 else self.board.reversed
         features = []
         for sgn in [1, -1]:

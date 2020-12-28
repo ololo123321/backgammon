@@ -8,7 +8,7 @@ from collections import namedtuple
 import numpy as np
 
 from .state import Board, State
-from .utils import extract_features, choose_move_trained
+from .utils import choose_move_trained
 from .nodes import MCNode, GameTreeNode
 
 
@@ -127,19 +127,21 @@ class TDAgent(BaseAgent):
         self.weights = weights
 
     def ply(self, state: State) -> State:
-        """
-        Модель предсказывает вероятность выигрыша игрока +1.
-        Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
-        """
+        state.sign = self.sign  # для гарантии того, что self.sign и state.sign одинаковы
         transitions = state.transitions
         features = [s.features for s in transitions]
-        x = np.concatenate(features, axis=0)
-        v = self.model.get_output(x)
-        v = v.flatten()
-        if state.sign == -1:
-            v = 1.0 - v
-        i = np.argmax(v)
-        s_best = transitions[i]
+        x = np.concatenate(features, axis=0)  # [num_transitions, num_features]
+        v = self.model.get_output(x)  # [num_transitions, 1]
+        v = v.flatten()  # [num_transitions]
+
+        # Модель предсказывает вероятность выигрыша игрока +1.
+        # Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
+        if self.sign == 1:
+            idx_best = v.argmax()
+        else:
+            idx_best = v.argmin()
+
+        s_best = transitions[idx_best]
         return s_best
 
 
