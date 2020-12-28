@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser.add_argument('--summaries_dir')
     parser.add_argument('--checkpoints_dir')
     parser.add_argument('--n_episodes', type=int, default=10000)
-    parser.add_argument('--val_period', type=int, val_period=500)
+    parser.add_argument('--val_period', type=int, default=500)
     parser.add_argument('--n_val', type=int, default=100)
     parser.add_argument('--restore', action='store_true')
     parser.add_argument('--play', action='store_true')
