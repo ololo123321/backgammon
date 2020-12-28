@@ -33,10 +33,10 @@ if __name__ == '__main__':
             model.play()
         else:
             if not os.path.exists(args.model_dir):
-                os.makedirs('models')
+                os.makedirs(args.model_dir)
             if not os.path.exists(args.summaries_dir):
-                os.makedirs('summaries')
+                os.makedirs(args.summaries_dir)
             if not os.path.exists(args.checkpoints_dir):
-                os.makedirs('checkpoints')
+                os.makedirs(args.checkpoints_dir)
 
             model.train(n_episodes=args.n_episodes, val_period=args.val_period, n_val=args.n_val)
