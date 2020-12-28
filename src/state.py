@@ -195,7 +195,7 @@ class State(ReprMixin):
         """
         if self.winner is not None:
             print(f"game over due to winner found: {self.winner}")
-            return [self]
+            return []
 
         leaves = {}
         max_depth = len(self.roll)
@@ -212,7 +212,6 @@ class State(ReprMixin):
             Построение игрового дерева, определяющего все возможные варианты ходов.
             Условия завершения обхода:
             1. Достигнута максимальная глубина, определяемая выпавшими кубиками
-            2. Достигнуто победное состояние
             """
             # сходили максимальное число раз
             if node.depth == max_depth:
@@ -253,7 +252,7 @@ class State(ReprMixin):
                             # пустая доска ~ текущий игрок победил
                             child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=True)
                             add_leaf(child)
-                            return
+                            # return
                         else:
                             child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
                             extend(child)

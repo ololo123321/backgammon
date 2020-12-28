@@ -90,9 +90,10 @@ class BaseModel(ABC):
             step = 0
             while not state.winner:
                 # print(f"step {step} starts")
-                state = agent.ply(state)
+                state = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
+                state = state.reversed  # развернули состояние к другому игроку
                 i = (i + 1) % 2
-                agent = agents[i]
+                agent = agents[i]  # сменили игрока
                 x_next = state.features
                 v_next = self.get_output(x_next)
                 feed_dict = {self.x: x, self.V_next: v_next}
