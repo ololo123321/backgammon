@@ -49,8 +49,8 @@ class Board(ReprMixin):
         # а затем только обновлять этот список без проходов по всей доске
         self._towers = {i for i, x in enumerate(self._board) if x > 0}
 
-        # хранение индекса первой башни, чтоб каждый раз его не пересчитывать за O(num towers)
-        self._t_min = min(self._towers)
+        # # хранение индекса первой башни, чтоб каждый раз его не пересчитывать за O(num towers)
+        # self._t_min = min(self._towers)
 
     @property
     def board(self):
@@ -132,7 +132,10 @@ class Board(ReprMixin):
         # если на позиции start фигур не осталось, то удалить башню
         if self._board[p] == 0:
             self._towers.remove(p)
-            self._t_min = min(self._towers)  # TODO: сделать обновление минимума не за O(n)
+            # if self._towers:
+            #     self._t_min = min(self._towers)  # TODO: сделать обновление минимума не за O(n)
+            # else:
+            #     self._t_min = -1
 
     def add_piece(self, p: int):
         assert 0 <= p <= 23, f'invalid position: {p}'
@@ -141,17 +144,23 @@ class Board(ReprMixin):
             self._bar[1] -= 1  # убрать шашку с bar
         if self._board[p] >= 0:  # не противник
             self._board[p] += 1  # добавить шашку
-        if self._board[p] == -1:  # одна шашка противника
+        elif self._board[p] == -1:  # одна шашка противника
             self._board[p] = 1  # поставить одну шашку
             self._bar[-1] += 1  # добавить одну шашку противника в bar
         if self._board[p] == 1:  # если p не была в towers
+            assert p not in self._towers, f"p: {p}, towers: {self._towers}"
             self._towers.add(p)
-            if p < self._t_min:
-                self._t_min = p
+            # if p < self._t_min:
+            #     self._t_min = p
 
     @property
     def copy(self):
         return deepcopy(self)
+
+    @property
+    def _t_min(self):
+        # TODO: сделать не за O(n)
+        return min(self._towers)
 
 
 class State(ReprMixin):
@@ -186,7 +195,7 @@ class State(ReprMixin):
         """
         if self.winner is not None:
             print(f"game over due to winner found: {self.winner}")
-            return []
+            return [self]
 
         leaves = {}
         max_depth = len(self.roll)
@@ -214,8 +223,9 @@ class State(ReprMixin):
             step = node.roll[node.depth]
 
             # если есть съеденные фигурки
-            if node.board.bar[1]:
-                board_copy = node.board.copy
+            board = node.board
+            if board.bar[1]:
+                board_copy = board.copy
                 home_position = step - 1
 
                 # если можно съеденную фигурку поставить на доску:
@@ -228,16 +238,16 @@ class State(ReprMixin):
                     if is_double:
                         add_leaf(node)
                     else:
-                        child = Node(board=node.board, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                        child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
                         extend(child)
             else:
                 # пытаемся сделать ход с каждой башни
                 is_leaf = True
-                for start in node.board.towers:
+                for start in board.towers:
                     end = start + step
-                    if node.board.is_valid_move(start=start, end=end):
+                    if board.is_valid_move(start=start, end=end):
                         is_leaf = False
-                        board_copy = node.board.copy
+                        board_copy = board.copy
                         board_copy.move(start=start, end=end)
                         if board_copy.is_empty:
                             # пустая доска ~ текущий игрок победил
@@ -287,6 +297,11 @@ class State(ReprMixin):
             features.append(15 - on_board - on_bar)  # число выкинутых фигур
         features.append(int(self.sign == 1))  # кто ходит
         return np.array(features).reshape(1, -1)
+
+    @property
+    def features_dim(self):
+        x = self.features
+        return x.shape[1]
 
     @property
     def copy(self):

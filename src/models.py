@@ -5,10 +5,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 import tensorflow as tf
 
-from .state import State
-from .environment import Environment
-from .agents import HumanAgent, RandomAgent, TDAgent
-from .utils import extract_features
+from src.state import State
+from src.environment import Environment
+from src.agents import HumanAgent, RandomAgent, TDAgent
 
 
 class BaseModel(ABC):
@@ -44,7 +43,7 @@ class BaseModel(ABC):
         latest_checkpoint_path = tf.train.latest_checkpoint(self.checkpoint_path)
         self.saver.restore(self.sess, latest_checkpoint_path)
 
-    def get_output(self, x):
+    def get_output(self, x: np.ndarray) -> np.ndarray:
         return self.sess.run(self.V, feed_dict={self.x: x, self.keep_prob: 1.0})
 
     def play(self):
@@ -79,6 +78,7 @@ class BaseModel(ABC):
         agents = [TDAgent(-1, model=self), TDAgent(1, model=self)]
         keep_prob = 0.9  # TODO: вынести в аргументы
         for episode in range(n_episodes):
+            # print(f"episode {episode} starts")
             if episode != 0 and episode % val_period == 0:
                 self.test(n_episodes=n_val)
 
@@ -86,19 +86,22 @@ class BaseModel(ABC):
             i = random.randint(0, 1)
             agent = agents[i]
             state.sign = agent.sign
-            x = extract_features(state)
+            x = state.features
             step = 0
             while not state.winner:
-                move = agent.choose_move(state)
-                state.update(move)
+                # print(f"step {step} starts")
+                state = agent.ply(state)
                 i = (i + 1) % 2
                 agent = agents[i]
-                x_next = extract_features(state)
-                V_next = self.get_output(x_next)
-                feed_dict = {self.x: x, self.V_next: V_next}
+                x_next = state.features
+                v_next = self.get_output(x_next)
+                feed_dict = {self.x: x, self.V_next: v_next}
                 self.sess.run(self.train_op, feed_dict=feed_dict)
                 x = x_next
                 step += 1
+                if step > 200:
+                    print(state)
+                    raise
 
             z = max(0, state.winner)
 
@@ -150,8 +153,8 @@ class ModelTD(BaseModel):
         super().__init__(*args, **kwargs)
 
     def build_graph(self):
-        input_shape = TDAgent().feature_space_dim()
-        self.x = tf.placeholder(shape=[1, input_shape], dtype=tf.float32, name="state")
+        d = State().features_dim
+        self.x = tf.placeholder(shape=[None, d], dtype=tf.float32, name="state")
         self.V_next = tf.placeholder(dtype=tf.float32, shape=None, name="V")
         self.keep_prob = tf.placeholder(dtype=tf.float32, shape=None, name="keep_prob")
 
@@ -229,8 +232,8 @@ class ModelTDOnline(BaseModel):
 
     def build_graph(self):
         # TODO: копипаста из ModelTD!
-        input_shape = TDAgent().feature_space_dim()
-        self.x = tf.placeholder(shape=[1, input_shape], dtype=tf.float32)
+        d = State().features_dim
+        self.x = tf.placeholder(shape=[1, d], dtype=tf.float32)
         self.V_next = tf.placeholder(dtype=tf.float32)
         self.V_old = tf.placeholder(dtype=tf.float32)
         self.V_trace = tf.placeholder(dtype=tf.float32)
@@ -283,3 +286,29 @@ class ModelTDOnline(BaseModel):
 
         if self.restore_flag:
             self.restore()
+
+
+if __name__ == "__main__":
+    import sys
+
+    if not os.path.exists('summaries'):
+        os.makedirs('summaries')
+
+    if not os.path.exists('checkpoints'):
+        os.makedirs('checkpoints')
+
+    model_path = os.path.join(sys.path[0], 'models')
+    summary_path = os.path.join(sys.path[0], 'summaries')
+    checkpoint_path = os.path.join(sys.path[0], 'checkpoints')
+
+    with tf.Session() as sess:
+        model = ModelTD(
+            sess=sess,
+            model_path=model_path,
+            summary_path=summary_path,
+            checkpoint_path=checkpoint_path,
+            hidden_sizes=None,
+            restore_flag=False
+        )
+
+        model.train(n_episodes=100, val_period=10, n_val=10)

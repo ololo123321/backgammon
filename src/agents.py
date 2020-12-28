@@ -5,6 +5,8 @@ from multiprocessing import Pool
 from abc import ABC, abstractmethod
 from collections import namedtuple
 
+import numpy as np
+
 from .state import Board, State
 from .utils import extract_features, choose_move_trained
 from .nodes import MCNode, GameTreeNode
@@ -124,27 +126,21 @@ class TDAgent(BaseAgent):
         self.model = model
         self.weights = weights
 
-    def ply(self, states: List[State]) -> State:
+    def ply(self, state: State) -> State:
         """
         Модель предсказывает вероятность выигрыша игрока +1.
         Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
         """
-        v_best = -1
-        s_best = None
-        for s in states:
-            x = s.features
-            v = self.model.get_output(x)
-            if s.sign == -1:
-                v = 1 - v
-            if v > v_best:
-                v_best = v
-                s_best = s
+        transitions = state.transitions
+        features = [s.features for s in transitions]
+        x = np.concatenate(features, axis=0)
+        v = self.model.get_output(x)
+        v = v.flatten()
+        if state.sign == -1:
+            v = 1.0 - v
+        i = np.argmax(v)
+        s_best = transitions[i]
         return s_best
-
-    @staticmethod
-    def feature_space_dim():
-        state = State()
-        return extract_features(state).shape[1]
 
 
 class MCAgentBase(BaseAgent):
