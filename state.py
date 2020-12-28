@@ -134,3 +134,34 @@ class State:
         self.sign *= -1  # обновление знака текущего игрока
         self.reverse_state()  # разворот доски к новому игрока
         self.roll = roll_dice()  # обновление кубиков
+
+
+if __name__ == '__main__':
+    """
+    1 1 9
+    1 2 15
+    1 3 16
+    1 4 14
+    1 5 8
+    1 6 10
+    2 2 13
+    2 3 17
+    2 4 18
+    2 5 8
+    2 6 14
+    3 3 13
+    3 4 17
+    3 5 9
+    3 6 14
+    4 4 12
+    4 5 9
+    4 6 14
+    5 5 3
+    5 6 7
+    6 6 6
+    """
+    s = State()
+    for i in range(1, 7):
+        for j in range(i, 7):
+            s.roll = i, j
+            print(i, j, len(s.get_moves()))
