@@ -228,7 +228,7 @@ class State(ReprMixin):
                 home_position = step - 1
 
                 # если можно съеденную фигурку поставить на доску:
-                if board_copy[home_position] >= -1:
+                if board_copy.board[home_position] >= -1:
                     board_copy.add_piece(home_position)
                     child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
                     extend(child)
