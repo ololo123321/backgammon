@@ -20,15 +20,18 @@ if __name__ == '__main__':
 
     os.makedirs(args.model_dir, exist_ok=True)
 
-    if args.train:
-        filename = os.path.join(args.model_dir, 'train.log')
-    else:
+    if args.test or args.play:
         filename = None
+    else:
+        filename = os.path.join(args.model_dir, 'train.log')
+
+    print("filename:", filename)
 
     with tf.Session() as sess:
         model = Model(
             sess=sess,
             model_dir=args.model_dir,
+            filename=filename,
             hidden_sizes=None,
             restore_flag=args.restore,
             max_to_keep=args.max_to_keep

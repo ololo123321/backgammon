@@ -27,7 +27,7 @@ class LoggerMixin:
         if filename is not None:
             file_handler = logging.FileHandler(filename=filename)
             file_handler.setFormatter(formatter)
-            self.logger.addFilter(file_handler)
+            self.logger.addHandler(file_handler)
 
         self.logger.setLevel(logging.DEBUG)
 
