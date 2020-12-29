@@ -204,7 +204,7 @@ class State(ReprMixin):
         # узел игрового дерева
         Node = namedtuple("Node", ["board", "depth", "roll", "is_game_over"])
 
-        def add_leaf(node):
+        def add_leaf(node: Node):
             leaves[node.board.fingerprint] = node
 
         def extend(node: Node):
@@ -316,16 +316,14 @@ class State(ReprMixin):
 
 
 if __name__ == '__main__':
-    for i in range(1, 7):
-        for j in range(i, 7):
-            if i != j:
-                roll = i, j
-            else:
-                roll = i, i, i, i
-            ss = State(roll=roll)
-            print(roll, len(ss.transitions))
-    # roll = 1, 5
-    # s = State(roll=roll)
-    # transitions = s.transitions
-    # for t in transitions:
-    #     print(t)
+
+    def check():
+        for i in range(1, 7):
+            for j in range(i, 7):
+                if i != j:
+                    roll = i, j
+                else:
+                    roll = i, i, i, i
+                ss = State(roll=roll)
+                print(roll, len(ss.transitions))
+    check()

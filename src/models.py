@@ -69,6 +69,13 @@ class BaseModel(ABC):
             print(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
 
     def train(self, n_episodes=10000, val_period=1000, n_val=100):
+        """
+
+        :param n_episodes:
+        :param val_period:
+        :param n_val:
+        :return:
+        """
         tf.train.write_graph(self.sess.graph_def, self.model_path, 'td_gammon.pb', as_text=False)
         summary_writer = tf.summary.FileWriter(
             logdir=self.summary_path,
@@ -90,20 +97,32 @@ class BaseModel(ABC):
             x = state.features
             step = 0
             while state.winner is None:
+                # 1. Выбрать лучшее состояние из возможных
                 assert state.sign == agent.sign
                 # print('=' * 10, f"step {step} starts", '=' * 10)
                 # print("current agent:", agent.sign)
                 # print("current state:", state)
                 state = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
                 # print("chosen state:", state)
+
+                # 2. Развернуть состояние к противнику
                 state = state.reversed  # развернули состояние к другому игроку
                 # print("reversed state:", state)
+
+                # 3. Сменить игрока
                 i = (i + 1) % 2
                 agent = agents[i]  # сменили игрока
+
+                # 4. Получить вектор признакового описания нового состояния
                 x_next = state.features
+
+                # 5. Посчитать награду за переход на новое состояние
                 v_next = self.get_output(x_next)
+
+                # 6. Сделать шаг обучения
                 feed_dict = {self.x: x, self.V_next: v_next}
                 self.sess.run(self.train_op, feed_dict=feed_dict)
+
                 x = x_next
                 step += 1
                 # if step > 200:
@@ -112,6 +131,7 @@ class BaseModel(ABC):
                 # if step == 5:
                 #     raise
 
+            # Получить истинную вероятность победы игрока +1 (1, если он победил, 0 - иначе)
             z = max(0, state.winner)
 
             ops = [self.train_op, self.global_step, self.summaries_op, self.reset_op]
