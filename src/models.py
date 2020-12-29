@@ -16,7 +16,7 @@ class LoggerMixin:
         logger_name = self.__class__.__name__
         self.logger = logging.getLogger(logger_name)
         formatter = logging.Formatter(
-            fmt='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            fmt='%(asctime)s.%(msecs)03d %(name)-8s %(levelname)-8s %(message)s',
             datefmt='%y-%m-%d %H:%M:%S'
         )
         console = logging.StreamHandler()
@@ -330,7 +330,7 @@ class ModelTDOnline(BaseModel):
 if __name__ == "__main__":
     def check():
         model_dir = "/tmp/backgammon"
-        os.makedirs(model_dir, exist_ok=True)
+        os.system(f'rm -r {model_dir} && mkdir {model_dir}')
         with tf.Session() as sess:
             model = ModelTD(
                 sess=sess,
@@ -338,6 +338,6 @@ if __name__ == "__main__":
                 hidden_sizes=None,
                 restore_flag=False
             )
-            model.train(n_episodes=50, val_period=10, n_val=10)
+            model.train(n_episodes=1000, val_period=500, n_val=100)
 
     check()

@@ -1,7 +1,6 @@
 import random
 from typing import List, Tuple, Union
 from collections import namedtuple
-from copy import deepcopy
 
 import numpy as np
 
@@ -155,6 +154,7 @@ class Board(ReprMixin):
 
     @property
     def copy(self):
+        # deepcopy гораздо медленней
         return Board(
             board=self._board.copy(),
             bar=self._bar.copy()
@@ -316,7 +316,7 @@ class State(ReprMixin):
             board=self.board.copy,
             roll=self.roll,
             winner=self.winner,
-            sign=self.sign * -1
+            sign=self.sign
         )
 
     @property
