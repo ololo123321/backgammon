@@ -20,6 +20,11 @@ if __name__ == '__main__':
 
     os.makedirs(args.model_dir, exist_ok=True)
 
+    if args.train:
+        filename = os.path.join(args.model_dir, 'train.log')
+    else:
+        filename = None
+
     with tf.Session() as sess:
         model = Model(
             sess=sess,

@@ -12,22 +12,29 @@ from src.agents import HumanAgent, RandomAgent, TDAgent
 
 
 class LoggerMixin:
-    def __init__(self):
+    def __init__(self, filename=None):
         logger_name = self.__class__.__name__
         self.logger = logging.getLogger(logger_name)
         formatter = logging.Formatter(
             fmt='%(asctime)s.%(msecs)03d %(name)-8s %(levelname)-8s %(message)s',
             datefmt='%y-%m-%d %H:%M:%S'
         )
+
         console = logging.StreamHandler()
         console.setFormatter(formatter)
         self.logger.addHandler(console)
+
+        if filename is not None:
+            file_handler = logging.FileHandler(filename=filename)
+            file_handler.setFormatter(formatter)
+            self.logger.addFilter(file_handler)
+
         self.logger.setLevel(logging.DEBUG)
 
 
 class BaseModel(ABC, LoggerMixin):
-    def __init__(self, sess, model_dir, hidden_sizes=None, restore_flag=False, max_to_keep=3):
-        super().__init__()
+    def __init__(self, sess, model_dir, filename=None, hidden_sizes=None, restore_flag=False, max_to_keep=3):
+        super().__init__(filename=filename)
         self.sess = sess
         self.model_dir = model_dir
         self.hidden_sizes = hidden_sizes

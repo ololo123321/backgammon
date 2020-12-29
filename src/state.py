@@ -76,8 +76,7 @@ class Board(ReprMixin):
     def reversed(self):
         board = [-x for x in self._board[::-1]]
         bar = {-k: v for k, v in self._bar.items()}
-        b = Board(board=board, bar=bar)
-        return b
+        return Board(board=board, bar=bar)
 
     @property
     def is_empty(self) -> bool:
@@ -309,17 +308,6 @@ class State(ReprMixin):
         return x.shape[1]
 
     @property
-    def copy(self):
-        """точная копия состояния"""
-        # return deepcopy(self)
-        return State(
-            board=self.board.copy,
-            roll=self.roll,
-            winner=self.winner,
-            sign=self.sign
-        )
-
-    @property
     def reversed(self):
         return State(board=self.board.reversed, roll=self.roll, winner=self.winner, sign=self.sign * -1)
 
@@ -335,4 +323,4 @@ if __name__ == '__main__':
                     roll = i, i, i, i
                 ss = State(roll=roll)
                 print(roll, len(ss.transitions))
-    check()
+    # check()
