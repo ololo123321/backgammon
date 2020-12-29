@@ -13,15 +13,15 @@ from src.agents import HumanAgent, RandomAgent, TDAgent
 
 class LoggerMixin:
     def __init__(self):
-        logger_name = self.__class__.__name__  # TODO: почему-то не прокидывается без console
+        logger_name = self.__class__.__name__
         self.logger = logging.getLogger(logger_name)
-        # formatter = logging.Formatter(
-        #     fmt='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-        #     datefmt='%y-%m-%d %H:%M:%S'
-        # )
-        # console = logging.StreamHandler()
-        # console.setFormatter(formatter)
-        # self.logger.addHandler(console)
+        formatter = logging.Formatter(
+            fmt='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            datefmt='%y-%m-%d %H:%M:%S'
+        )
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        self.logger.addHandler(console)
         self.logger.setLevel(logging.DEBUG)
 
 
