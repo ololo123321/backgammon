@@ -155,7 +155,10 @@ class Board(ReprMixin):
 
     @property
     def copy(self):
-        return deepcopy(self)
+        return Board(
+            board=self._board.copy(),
+            bar=self._bar.copy()
+        )
 
     @property
     def _t_min(self):
@@ -308,7 +311,13 @@ class State(ReprMixin):
     @property
     def copy(self):
         """точная копия состояния"""
-        return deepcopy(self)
+        # return deepcopy(self)
+        return State(
+            board=self.board.copy,
+            roll=self.roll,
+            winner=self.winner,
+            sign=self.sign * -1
+        )
 
     @property
     def reversed(self):

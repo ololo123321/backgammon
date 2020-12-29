@@ -1,7 +1,8 @@
-import time
 import os
 import random
+import logging
 from abc import ABC, abstractmethod
+
 import numpy as np
 import tensorflow as tf
 
@@ -10,14 +11,28 @@ from src.environment import Environment
 from src.agents import HumanAgent, RandomAgent, TDAgent
 
 
-class BaseModel(ABC):
-    def __init__(self, sess, model_path, summary_path, checkpoint_path, hidden_sizes=None, restore_flag=False):
+class LoggerMixin:
+    def __init__(self):
+        logger_name = self.__class__.__name__  # TODO: почему-то не прокидывается без console
+        self.logger = logging.getLogger(logger_name)
+        # formatter = logging.Formatter(
+        #     fmt='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        #     datefmt='%y-%m-%d %H:%M:%S'
+        # )
+        # console = logging.StreamHandler()
+        # console.setFormatter(formatter)
+        # self.logger.addHandler(console)
+        self.logger.setLevel(logging.DEBUG)
+
+
+class BaseModel(ABC, LoggerMixin):
+    def __init__(self, sess, model_dir, hidden_sizes=None, restore_flag=False, max_to_keep=3):
+        super().__init__()
         self.sess = sess
-        self.model_path = model_path
-        self.summary_path = summary_path
-        self.checkpoint_path = checkpoint_path
+        self.model_dir = model_dir
         self.hidden_sizes = hidden_sizes
         self.restore_flag = restore_flag
+        self.max_to_keep = max_to_keep
 
         # tensors
         self.x = None
@@ -40,9 +55,17 @@ class BaseModel(ABC):
     def build_graph(self):
         pass
 
-    def restore(self):
-        latest_checkpoint_path = tf.train.latest_checkpoint(self.checkpoint_path)
-        self.saver.restore(self.sess, latest_checkpoint_path)
+    def restore(self, checkpoint_path: str = None):
+        if checkpoint_path is None:
+            checkpoint_path = tf.train.latest_checkpoint(self.model_dir)
+        self.logger.debug(f"restoring model from {checkpoint_path}")
+        self.saver.restore(self.sess, checkpoint_path)
+
+    def save(self, checkpoint_path: str = None, global_step: int = None):
+        if checkpoint_path is None:
+            checkpoint_path = os.path.join(self.model_dir, 'model.ckpt')
+        self.logger.debug(f"saving model to {checkpoint_path}")
+        self.saver.save(sess=self.sess, save_path=checkpoint_path, global_step=global_step)
 
     def get_output(self, x: np.ndarray) -> np.ndarray:
         return self.sess.run(self.V, feed_dict={self.x: x, self.keep_prob: 1.0})
@@ -66,29 +89,15 @@ class BaseModel(ABC):
             else:
                 random_wins += 1
 
-            print(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
+            self.logger.debug(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
 
-    def train(self, n_episodes=10000, val_period=1000, n_val=100):
-        """
-
-        :param n_episodes:
-        :param val_period:
-        :param n_val:
-        :return:
-        """
-        tf.train.write_graph(self.sess.graph_def, self.model_path, 'td_gammon.pb', as_text=False)
-        summary_writer = tf.summary.FileWriter(
-            logdir=self.summary_path,
-            graph=self.sess.graph,
-            filename_suffix=str(time.time())
-        )
+    def train(self, n_episodes=10000, val_period=1000, n_val=100, save_period=1000):
+        summary_writer = tf.summary.FileWriter(logdir=self.model_dir)
 
         agents = [TDAgent(-1, model=self), TDAgent(1, model=self)]
         keep_prob = 0.9  # TODO: вынести в аргументы
         for episode in range(n_episodes):
             # print(f"episode {episode} starts")
-            if episode != 0 and episode % val_period == 0:
-                self.test(n_episodes=n_val)
 
             state = State()
             i = random.randint(0, 1)
@@ -125,11 +134,6 @@ class BaseModel(ABC):
 
                 x = x_next
                 step += 1
-                # if step > 200:
-                #     print(state)
-                #     raise
-                # if step == 5:
-                #     raise
 
             # Получить истинную вероятность победы игрока +1 (1, если он победил, 0 - иначе)
             z = max(0, state.winner)
@@ -143,10 +147,14 @@ class BaseModel(ABC):
             _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)
-            print(f'Game: {episode} Winner: {z} in {step} turns')
-            # self.saver.save(self.sess, os.path.join(self.checkpoint_path, 'checkpoint'), global_step=global_step)
+            self.logger.debug(f'Game: {episode} Winner: {z} in {step} turns')
 
-            # raise
+            if episode % val_period == 0:
+                self.logger.debug("Evaluation with random agent starts")
+                self.test(n_episodes=n_val)
+
+            if episode % save_period == 0:
+                self.save(global_step=global_step)
 
         summary_writer.close()
         self.test(n_episodes=1000)
@@ -246,7 +254,7 @@ class ModelTD(BaseModel):
             self.train_op = tf.group(*apply_gradients, name='train')
 
         self.summaries_op = tf.summary.merge_all()
-        self.saver = tf.train.Saver(max_to_keep=1)
+        self.saver = tf.train.Saver(max_to_keep=self.max_to_keep)
         self.sess.run(tf.global_variables_initializer())
 
         if self.restore_flag:
@@ -320,26 +328,16 @@ class ModelTDOnline(BaseModel):
 
 
 if __name__ == "__main__":
-    import sys
+    def check():
+        model_dir = "/tmp/backgammon"
+        os.makedirs(model_dir, exist_ok=True)
+        with tf.Session() as sess:
+            model = ModelTD(
+                sess=sess,
+                model_dir=model_dir,
+                hidden_sizes=None,
+                restore_flag=False
+            )
+            model.train(n_episodes=50, val_period=10, n_val=10)
 
-    if not os.path.exists('summaries'):
-        os.makedirs('summaries')
-
-    if not os.path.exists('checkpoints'):
-        os.makedirs('checkpoints')
-
-    model_path = os.path.join(sys.path[0], 'models')
-    summary_path = os.path.join(sys.path[0], 'summaries')
-    checkpoint_path = os.path.join(sys.path[0], 'checkpoints')
-
-    with tf.Session() as sess:
-        model = ModelTD(
-            sess=sess,
-            model_path=model_path,
-            summary_path=summary_path,
-            checkpoint_path=checkpoint_path,
-            hidden_sizes=None,
-            restore_flag=False
-        )
-
-        model.train(n_episodes=100, val_period=10, n_val=10)
+    check()
