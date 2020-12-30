@@ -8,8 +8,6 @@ from src.models import ModelTD as Model
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--model_dir')
-    parser.add_argument('--hidden_dims', type=str, default='80', required=False)
-    parser.add_argument('--dropout', type=float, default=0.2, required=False)
     parser.add_argument('--num_games_training', type=int, default=10000, required=False)
     parser.add_argument('--val_period', type=int, default=1000, required=False)
     parser.add_argument('--num_games_test', type=int, default=100, required=False)
@@ -41,12 +39,8 @@ if __name__ == '__main__':
             print("building new model...")
             os.makedirs(args.model_dir, exist_ok=True)
             filename = os.path.join(args.model_dir, 'train.log')
-            hidden_dims = list(map(int, args.hidden_dims.split(',')))
             config = {
-                "model": {
-                    "hidden_dims": hidden_dims,
-                    "dropout": args.dropout
-                },
+                "model": {},
                 "training": {
                     "model_dir": args.model_dir,
                     "num_games": args.num_games_training,

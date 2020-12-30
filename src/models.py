@@ -11,6 +11,7 @@ import tensorflow as tf
 from src.state import State
 from src.environment import Environment
 from src.agents import HumanAgent, RandomAgent, TDAgent
+from src import encoders
 
 
 class LoggerMixin:
@@ -241,7 +242,9 @@ class ModelTD(BaseModel):
 
         gamma = tf.constant(0.99)  # TODO: вынести в параметры
 
-        self.build_nn()
+        enc = encoders.TesauroEncoder()
+        x = enc(self.state_ph)
+        self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
         delta = tf.reduce_mean(self.V_next - self.V)
         loss = tf.square(delta)
@@ -282,17 +285,6 @@ class ModelTD(BaseModel):
 
         self.summaries_op = tf.summary.merge_all()
         self.sess.run(tf.global_variables_initializer())
-
-    def build_nn(self):
-        x = None
-        assert len(self.config['model']['hidden_dims']) > 0
-        for i, hidden_dim in enumerate(self.config['model']['hidden_dims']):
-            if i == 0:
-                x = tf.keras.layers.Dense(hidden_dim, activation=tf.nn.relu)(self.state_ph)
-            else:
-                x = tf.keras.layers.Dense(hidden_dim, activation=tf.nn.relu)(x)
-                x = tf.keras.layers.Dropout(self.config['model']['dropout'])(x, training=self.training_ph)
-        self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
 
 class ModelTDOnline(BaseModel):
