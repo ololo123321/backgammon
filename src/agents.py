@@ -1,5 +1,4 @@
 import random
-import re
 from typing import List
 from multiprocessing import Pool
 from abc import ABC, abstractmethod
@@ -61,44 +60,42 @@ class HumanAgent(BaseAgent):
             print('Singe possible move is available')
             return transitions[0]
 
-        turn = self.get_input()
+        turn = self._get_input()
         board2state = {s.board.fingerprint: s for s in transitions}
-        board_new = self.run_turn(turn=turn, board=state.board)
+        board_new = self._run_turn(turn=turn, board=state.board)
         if board_new in board2state:
             return board2state[board_new]
+        else:
+            print('Invalid turn')
+            print('Current state:', state.board.board, state.board.bar)
+            print('Possible states:')
+            for s in transitions:
+                print(s.board.board, s.board.bar)
+            return self.ply(state)
 
-        print('Invalid turn')
-        print('Current state:', state.board.board, state.board.bar)
-        print('Possible states:')
-        for s in transitions:
-            print(s.board.board, s.board.bar)
-        return self.ply(state)
-
-    def get_input(self):
+    def _get_input(self):
         turn = input('Enter turn: start,end start,end: ')
         try:
-            return self.transform_turn(turn)
+            return self._transform_turn(turn)
         except InvalidInput:
             print(f'Invalid input: {turn}')
-            return self.get_input()
+            return self._get_input()
 
-    def transform_turn(self, turn_str: str) -> List[Move]:
+    def _transform_turn(self, turn_str: str) -> List[Move]:
         turn = []
         moves = turn_str.split()
         if len(moves) > 4:
             raise InvalidInput(f"expected number of moves <= 4, got {len(moves)}")
         for move in moves:
             try:
-                move = self.transform_move(move)
+                move = self._transform_move(move)
                 turn.append(move)
             except InvalidInput as e:
                 raise e
         return turn
 
-    @staticmethod
-    def transform_move(move: str) -> Move:
-        if not re.fullmatch(r'\d+,\d+', move):
-            raise InvalidInput(f"unable to parse move {move}")
+    def _transform_move(self, move: str) -> Move:
+        self._check_move(move)
 
         move = Move(*map(int, move.split(',')))
 
@@ -108,7 +105,7 @@ class HumanAgent(BaseAgent):
             raise InvalidInput(f"invalid positions: start: {move.start}, end: {move.end}")
 
     @staticmethod
-    def run_turn(turn: List[Move], board: Board) -> Board:
+    def _run_turn(turn: List[Move], board: Board) -> Board:
         board_copy = board.copy
         for move in turn:
             if (0 <= move.start <= 23) and (0 <= move.end <= 23):
@@ -117,7 +114,19 @@ class HumanAgent(BaseAgent):
                 board_copy.remove_piece(move.end)
             elif (0 <= move.start <= 23) and (move.end == -1):
                 board_copy.add_piece(move.start)
+            else:
+                raise
         return board_copy
+
+    @staticmethod
+    def _check_move(move: str):
+        valid_positions = set(map(str, range(0, 24)))
+        valid_positions.add('-1')
+        try:
+            start, end = move.split(',')
+            assert start in valid_positions and end in valid_positions
+        except:
+            raise InvalidInput(f"unable to parse move {move}")
 
 
 class TDAgent(BaseAgent):

@@ -1,6 +1,7 @@
 import os
 import random
 import logging
+import time
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -96,6 +97,7 @@ class BaseModel(ABC, LoggerMixin):
             state.sign = agent.sign
             x = state.features
             step = 0
+            t0 = time.time()
             while state.winner is None:
                 # 1. Выбрать лучшее состояние из возможных
                 assert state.sign == agent.sign
@@ -138,10 +140,10 @@ class BaseModel(ABC, LoggerMixin):
             _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)
-            self.logger.debug(f'Game: {episode} Winner: {z} in {step} turns')
+            self.logger.debug(f'game: {episode}; winner: {z}; num turns: {step}; time elapsed: {time.time() - t0}s')
 
             if episode % self.config['training']['val_period'] == 0:
-                self.logger.debug("Evaluation with random agent starts")
+                self.logger.debug("evaluation with random agent starts")
                 self.test(n_episodes=self.config['validation']['num_games'])
 
             if episode % self.config['training']['save_period'] == 0:
@@ -275,11 +277,13 @@ class ModelTD(BaseModel):
 
     def build_nn(self):
         x = None
+        assert len(self.config['model']['hidden_dims']) > 0
         for i, hidden_dim in enumerate(self.config['model']['hidden_dims']):
-            x_in = self.state_ph if i == 0 else x
-            x = tf.keras.layers.Dense(hidden_dim, activation=tf.nn.relu)(x_in)
-            x = tf.keras.layers.Dropout(self.config['model']['dropout'])(x, training=self.training_ph)
-        assert x is not None
+            if i == 0:
+                x = tf.keras.layers.Dense(hidden_dim, activation=tf.nn.relu)(self.state_ph)
+            else:
+                x = tf.keras.layers.Dense(hidden_dim, activation=tf.nn.relu)(x)
+                x = tf.keras.layers.Dropout(self.config['model']['dropout'])(x, training=self.training_ph)
         self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
 
