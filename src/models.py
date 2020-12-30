@@ -33,17 +33,37 @@ class LoggerMixin:
 
 
 class BaseModel(ABC, LoggerMixin):
-    def __init__(self, sess, model_dir, filename=None, hidden_sizes=None, restore_flag=False, max_to_keep=3):
+    def __init__(self, sess, config):
+        """
+        config = {
+            "model": {
+                "hidden_dims": [80, 40],
+                "dropout": 0.1
+            },
+            "training": {
+                "model_dir": "/tmp/backgammon_agent",
+                "num_games": 100000,
+                "val_period": 1000,
+                "save_period": 1000,
+                "max_to_keep": 10
+            },
+            "validation": {
+                "num_games": 100
+            }
+        }
+        """
+        model_dir = config.get("training", {}).get("model_dir")
+        filename = os.path.join(model_dir, "train.log") if model_dir is not None else None
         super().__init__(filename=filename)
+
         self.sess = sess
-        self.model_dir = model_dir
-        self.hidden_sizes = hidden_sizes
-        self.restore_flag = restore_flag
-        self.max_to_keep = max_to_keep
+        self.config = config
+
+        # inputs
+        self.state_ph = None
+        self.training_ph = None
 
         # tensors
-        self.x = None
-        self.keep_prob = None
         self.V = None
         self.V_next = None
         self.global_step = None
@@ -56,54 +76,18 @@ class BaseModel(ABC, LoggerMixin):
 
         self.saver = None
 
-        self.build_graph()
-
     @abstractmethod
-    def build_graph(self):
+    def build(self):
         pass
 
-    def restore(self, checkpoint_path: str = None):
-        if checkpoint_path is None:
-            checkpoint_path = tf.train.latest_checkpoint(self.model_dir)
-        self.logger.debug(f"restoring model from {checkpoint_path}")
-        self.saver.restore(self.sess, checkpoint_path)
-
-    def save(self, checkpoint_path: str = None, global_step: int = None):
-        if checkpoint_path is None:
-            checkpoint_path = os.path.join(self.model_dir, 'model.ckpt')
-        self.logger.debug(f"saving model to {checkpoint_path}")
-        self.saver.save(sess=self.sess, save_path=checkpoint_path, global_step=global_step)
-
-    def get_output(self, x: np.ndarray) -> np.ndarray:
-        return self.sess.run(self.V, feed_dict={self.x: x, self.keep_prob: 1.0})
-
-    def play(self):
-        agents = [TDAgent(-1, self), HumanAgent(1)]
-        env = Environment(agents, verbose=True)
-        env.play()
-
-    def test(self, n_episodes=100):
-        td_wins = 0
-        random_wins = 0
-        for i in range(n_episodes):
-            sgn = random.choice([-1, 1])
-            agents = [TDAgent(sgn, model=self), RandomAgent(-sgn)]
-            env = Environment(agents)
-            env.play()
-
-            if env.winner == sgn:
-                td_wins += 1
-            else:
-                random_wins += 1
-
-            self.logger.debug(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
-
-    def train(self, n_episodes=10000, val_period=1000, n_val=100, save_period=1000):
-        summary_writer = tf.summary.FileWriter(logdir=self.model_dir)
+    def train(self):
+        summary_writer = tf.summary.FileWriter(logdir=self.config['training']['model_dir'])
+        saver = tf.train.Saver(max_to_keep=self.config['training']['max_to_keep'])
+        checkpoint_path = os.path.join(self.config['training']['model_dir'], 'model.ckpt')
 
         agents = [TDAgent(-1, model=self), TDAgent(1, model=self)]
-        keep_prob = 0.9  # TODO: вынести в аргументы
-        for episode in range(n_episodes):
+
+        for episode in range(self.config['training']['num_games']):
             # print(f"episode {episode} starts")
 
             state = State()
@@ -136,7 +120,7 @@ class BaseModel(ABC, LoggerMixin):
                 v_next = self.get_output(x_next)
 
                 # 6. Сделать шаг обучения
-                feed_dict = {self.x: x, self.V_next: v_next}
+                feed_dict = {self.state_ph: x, self.V_next: v_next, self.training_ph: True}
                 self.sess.run(self.train_op, feed_dict=feed_dict)
 
                 x = x_next
@@ -147,30 +131,63 @@ class BaseModel(ABC, LoggerMixin):
 
             ops = [self.train_op, self.global_step, self.summaries_op, self.reset_op]
             feed_dict = {
-                self.x: x,
+                self.state_ph: x,
                 self.V_next: np.array([[z]], dtype=np.float32),
-                self.keep_prob: keep_prob
+                self.training_ph: True
             }
             _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)
             self.logger.debug(f'Game: {episode} Winner: {z} in {step} turns')
 
-            if episode % val_period == 0:
+            if episode % self.config['training']['val_period'] == 0:
                 self.logger.debug("Evaluation with random agent starts")
-                self.test(n_episodes=n_val)
+                self.test(n_episodes=self.config['validation']['num_games'])
 
-            if episode % save_period == 0:
-                self.save(global_step=global_step)
+            if episode % self.config['training']['save_period'] == 0:
+                self.logger.debug(f"saving model to {checkpoint_path}")
+                saver.save(sess=self.sess, save_path=checkpoint_path, global_step=global_step)
 
         summary_writer.close()
         self.test(n_episodes=1000)
+
+    def test(self, n_episodes=100):
+        td_wins = 0
+        random_wins = 0
+        for i in range(n_episodes):
+            sgn = random.choice([-1, 1])
+            agents = [TDAgent(sgn, model=self), RandomAgent(-sgn)]
+            env = Environment(agents)
+            env.play()
+
+            if env.winner == sgn:
+                td_wins += 1
+            else:
+                random_wins += 1
+
+            self.logger.debug(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
+
+    def play(self):
+        agents = [TDAgent(-1, self), HumanAgent(1)]
+        env = Environment(agents, verbose=True)
+        env.play()
+
+    def restore(self, checkpoint_path: str = None):
+        if checkpoint_path is None:
+            model_dir = self.config.get("training", {}).get("model_dir")
+            assert model_dir is not None
+            checkpoint_path = tf.train.latest_checkpoint(model_dir)
+        self.logger.debug(f"restoring model from {checkpoint_path}")
+        self.saver.restore(self.sess, checkpoint_path)
+
+    def get_output(self, x: np.ndarray) -> np.ndarray:
+        return self.sess.run(self.V, feed_dict={self.state_ph: x, self.training_ph: False})
 
     def export_inference_graph(self, export_dir):
         builder = tf.saved_model.builder.SavedModelBuilder(export_dir)
 
         inputs = {
-            "state": tf.saved_model.utils.build_tensor_info(self.x),
+            "state": tf.saved_model.utils.build_tensor_info(self.state_ph),
         }
 
         outputs = {
@@ -195,14 +212,14 @@ class BaseModel(ABC, LoggerMixin):
 
 
 class ModelTD(BaseModel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, sess, config):
+        super().__init__(sess=sess, config=config)
 
-    def build_graph(self):
+    def build(self):
         d = State().features_dim
-        self.x = tf.placeholder(shape=[None, d], dtype=tf.float32, name="state")
+        self.state_ph = tf.placeholder(shape=[None, d], dtype=tf.float32, name="state_ph")
+        self.training_ph = tf.placeholder(dtype=tf.bool, shape=None, name="training_ph")
         self.V_next = tf.placeholder(dtype=tf.float32, shape=None, name="V")
-        self.keep_prob = tf.placeholder(dtype=tf.float32, shape=None, name="keep_prob")
 
         self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False)
 
@@ -214,14 +231,7 @@ class ModelTD(BaseModel):
 
         gamma = tf.constant(0.99)  # TODO: вынести в параметры
 
-        self.hidden_sizes = self.hidden_sizes if self.hidden_sizes else [80]
-        h = self.hidden_sizes.pop(0)
-        x = tf.layers.dense(self.x, h, tf.nn.relu)
-        for h in self.hidden_sizes:
-            x = tf.layers.dense(x, h, tf.nn.relu)
-            x = tf.nn.dropout(x, self.keep_prob)
-
-        self.V = tf.layers.dense(x, 1, tf.nn.sigmoid)
+        self.build_nn()
 
         delta = tf.reduce_mean(self.V_next - self.V)
         loss = tf.square(delta)
@@ -261,11 +271,16 @@ class ModelTD(BaseModel):
             self.train_op = tf.group(*apply_gradients, name='train')
 
         self.summaries_op = tf.summary.merge_all()
-        self.saver = tf.train.Saver(max_to_keep=self.max_to_keep)
         self.sess.run(tf.global_variables_initializer())
 
-        if self.restore_flag:
-            self.restore()
+    def build_nn(self):
+        x = None
+        for i, hidden_dim in enumerate(self.config['model']['hidden_dims']):
+            x_in = self.state_ph if i == 0 else x
+            x = tf.keras.layers.Dense(hidden_dim, activation=tf.nn.relu)(x_in)
+            x = tf.keras.layers.Dropout(self.config['model']['dropout'])(x, training=self.training_ph)
+        assert x is not None
+        self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
 
 class ModelTDOnline(BaseModel):
@@ -275,11 +290,12 @@ class ModelTDOnline(BaseModel):
         self.V_old = None
         self.V_trace = None
         self.flag = None
+        self.assign_trace_op = None
 
-    def build_graph(self):
+    def build(self):
         # TODO: копипаста из ModelTD!
         d = State().features_dim
-        self.x = tf.placeholder(shape=[1, d], dtype=tf.float32)
+        self.state_ph = tf.placeholder(shape=[None, d], dtype=tf.float32)
         self.V_next = tf.placeholder(dtype=tf.float32)
         self.V_old = tf.placeholder(dtype=tf.float32)
         self.V_trace = tf.placeholder(dtype=tf.float32)
@@ -295,10 +311,10 @@ class ModelTDOnline(BaseModel):
 
         keep_prob = 0.2
 
-        self.hidden_sizes = self.hidden_sizes if self.hidden_sizes else [80]
-        h = self.hidden_sizes.pop(0)
-        x = tf.layers.dense(self.x, h, tf.nn.relu)
-        for h in self.hidden_sizes:
+        hidden_sizes = [80]
+        h = hidden_sizes.pop(0)
+        x = tf.layers.dense(self.state_ph, h, tf.nn.relu)
+        for h in hidden_sizes:
             x = tf.layers.dense(x, h, tf.nn.relu)
             x = tf.nn.dropout(x, keep_prob)
 
@@ -324,27 +340,36 @@ class ModelTDOnline(BaseModel):
 
         with tf.control_dependencies([global_step_op]):
             self.train_op = tf.group(*apply_gradients, name='train')
-            self.assign_trace = tf.group(*apply_traces)
+            self.assign_trace_op = tf.group(*apply_traces)
 
         self.summaries_op = tf.summary.merge_all()
         self.saver = tf.train.Saver(max_to_keep=1)
         self.sess.run(tf.global_variables_initializer())
 
-        if self.restore_flag:
-            self.restore()
-
 
 if __name__ == "__main__":
     def check():
+        sess = tf.Session()
         model_dir = "/tmp/backgammon"
+        config = {
+            "model": {
+                "hidden_dims": [80, 40],
+                "dropout": 0.1
+            },
+            "training": {
+                "model_dir": model_dir,
+                "num_games": 100,
+                "val_period": 10,
+                "save_period": 10,
+                "max_to_keep": 1
+            },
+            "validation": {
+                "num_games": 10
+            }
+        }
         os.system(f'rm -r {model_dir} && mkdir {model_dir}')
-        with tf.Session() as sess:
-            model = ModelTD(
-                sess=sess,
-                model_dir=model_dir,
-                hidden_sizes=None,
-                restore_flag=False
-            )
-            model.train(n_episodes=1000, val_period=500, n_val=100)
+        model = ModelTD(sess=sess, config=config)
+        model.build()
+        model.train()
 
     check()
