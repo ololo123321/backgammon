@@ -38,7 +38,6 @@ if __name__ == '__main__':
         else:
             print("building new model...")
             os.makedirs(args.model_dir, exist_ok=True)
-            filename = os.path.join(args.model_dir, 'train.log')
             config = {
                 "model": {},
                 "training": {

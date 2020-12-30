@@ -133,13 +133,10 @@ class BaseModel(ABC, LoggerMixin):
 
             # Получить истинную вероятность победы игрока +1 (1, если он победил, 0 - иначе)
             z = max(0, state.winner)
+            v_next = np.array([[z]], dtype=np.float32)
 
             ops = [self.train_op, self.global_step, self.summaries_op, self.reset_op]
-            feed_dict = {
-                self.state_ph: x,
-                self.V_next: np.array([[z]], dtype=np.float32),
-                self.training_ph: True
-            }
+            feed_dict = {self.state_ph: x, self.V_next: v_next, self.training_ph: True}
             _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)

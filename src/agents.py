@@ -30,7 +30,6 @@ class RandomAgent(BaseAgent):
         super().__init__(sign)
 
     def ply(self, state: State) -> State:
-
         return random.choice(state.transitions)
 
 
