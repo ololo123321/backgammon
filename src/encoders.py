@@ -1,5 +1,5 @@
 """
-Encoders of state. Take as input vectorized representation of states, and return approximation of value functions
+Encoders of states. Take as input vectorized representation of states, and return new vectorized representation
 """
 
 import tensorflow as tf

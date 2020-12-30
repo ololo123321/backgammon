@@ -242,7 +242,7 @@ class ModelTD(BaseModel):
 
         gamma = tf.constant(0.99)  # TODO: вынести в параметры
 
-        enc = encoders.TesauroEncoder()
+        enc = encoders.TesauroEncoder()  # TODO: попробовать другие параметры инициализации
         x = enc(self.state_ph)
         self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
