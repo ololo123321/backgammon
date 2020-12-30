@@ -2,6 +2,7 @@ import os
 import random
 import logging
 import time
+import json
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -53,8 +54,11 @@ class BaseModel(ABC, LoggerMixin):
             }
         }
         """
-        model_dir = config.get("training", {}).get("model_dir")
-        filename = os.path.join(model_dir, "train.log") if model_dir is not None else None
+        filename = None
+        if config is not None:
+            model_dir = config.get("training", {}).get("model_dir")
+            if model_dir is not None:
+                filename = os.path.join(model_dir, "train.log")
         super().__init__(filename=filename)
 
         self.sess = sess
@@ -74,8 +78,6 @@ class BaseModel(ABC, LoggerMixin):
         self.train_op = None
         self.reset_op = None
         self.summaries_op = None
-
-        self.saver = None
 
     @abstractmethod
     def build(self):
@@ -140,7 +142,8 @@ class BaseModel(ABC, LoggerMixin):
             _, global_step, summaries, _ = self.sess.run(ops, feed_dict=feed_dict)
 
             summary_writer.add_summary(summaries, global_step=global_step)
-            self.logger.debug(f'game: {episode}; winner: {z}; num turns: {step}; time elapsed: {time.time() - t0}s')
+            t_game = round(time.time() - t0, 4)
+            self.logger.debug(f'game: {episode}; winner: {z}; num turns: {step}; time elapsed: {t_game} sec.')
 
             if episode % self.config['training']['val_period'] == 0:
                 self.logger.debug("evaluation with random agent starts")
@@ -174,13 +177,18 @@ class BaseModel(ABC, LoggerMixin):
         env = Environment(agents, verbose=True)
         env.play()
 
-    def restore(self, checkpoint_path: str = None):
-        if checkpoint_path is None:
-            model_dir = self.config.get("training", {}).get("model_dir")
-            assert model_dir is not None
-            checkpoint_path = tf.train.latest_checkpoint(model_dir)
+    def restore(self, model_dir: str = None):
+        # подгрузка конфига
+        self.config = json.load(open(os.path.join(model_dir, 'config.json')))
+
+        # построение вычислительного графа
+        self.build()
+
+        # подгрузка весов
+        saver = tf.train.Saver()
+        checkpoint_path = tf.train.latest_checkpoint(model_dir)
         self.logger.debug(f"restoring model from {checkpoint_path}")
-        self.saver.restore(self.sess, checkpoint_path)
+        saver.restore(self.sess, checkpoint_path)
 
     def get_output(self, x: np.ndarray) -> np.ndarray:
         return self.sess.run(self.V, feed_dict={self.state_ph: x, self.training_ph: False})

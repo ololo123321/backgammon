@@ -28,27 +28,27 @@ class Environment:
 
     def draw(self, agent):
         if agent.sign == 1:
-            upper_side = [n for i, n in enumerate(self.state.board) if i < 12]
-            lower_side = [n for i, n in enumerate(self.state.board) if i >= 12]
+            upper_side = [n for i, n in enumerate(self.state.board.board) if i < 12]
+            lower_side = [n for i, n in enumerate(self.state.board.board) if i >= 12]
         else:
-            upper_side = [n for i, n in enumerate(self.state.board[::-1]) if i < 12]
-            lower_side = [n for i, n in enumerate(self.state.board[::-1]) if i >= 12]
+            upper_side = [n for i, n in enumerate(self.state.board.board[::-1]) if i < 12]
+            lower_side = [n for i, n in enumerate(self.state.board.board[::-1]) if i >= 12]
 
         if agent.sign == 1:
-            self.draw_locations(upper=True)
+            self._draw_locations(upper=True)
         else:
-            self.draw_locations(upper=False)
+            self._draw_locations(upper=False)
 
         print('-' * 79)
-        self.draw_side(upper_side, agent, upper=True)
+        self._draw_side(upper_side, agent, upper=True)
         print()
-        self.draw_side(lower_side, agent, upper=False)
+        self._draw_side(lower_side, agent, upper=False)
         print('-' * 79)
 
         if agent.sign == 1:
-            self.draw_locations(upper=False)
+            self._draw_locations(upper=False)
         else:
-            self.draw_locations(upper=True)
+            self._draw_locations(upper=True)
 
         print('agent {} rolled ({}, {})'.format(agent.token, *self.state.roll))
         print('current board:', self.state.board.board)
@@ -56,18 +56,18 @@ class Environment:
         print('=' * 80)
 
     @staticmethod
-    def draw_row(content):
+    def _draw_row(content):
         white_space = ' ' * 5
         print(white_space.join(content))
 
-    def draw_locations(self, upper=True):
+    def _draw_locations(self, upper=True):
         if upper:
             locations = [y + ' ' if len(y) == 1 else y for y in [str(x) for x in range(11, -1, -1)]]
         else:
             locations = [str(x) for x in range(12, 24)]
-        self.draw_row(locations)
+        self._draw_row(locations)
 
-    def draw_side(self, side, agent, upper=True):
+    def _draw_side(self, side, agent, upper=True):
         height = max([abs(x) for x in side])
         for h in range(height):
             content = []
@@ -83,4 +83,4 @@ class Environment:
                         content.insert(0, v + ' ')
                     else:
                         content.insert(0, ' ' * 2)
-            self.draw_row(content)
+            self._draw_row(content)

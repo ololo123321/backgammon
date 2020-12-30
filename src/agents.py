@@ -63,14 +63,15 @@ class HumanAgent(BaseAgent):
         turn = self._get_input()
         board2state = {s.board.fingerprint: s for s in transitions}
         board_new = self._run_turn(turn=turn, board=state.board)
-        if board_new in board2state:
-            return board2state[board_new]
+        if board_new.fingerprint in board2state:
+            return board2state[board_new.fingerprint]
         else:
             print('Invalid turn')
             print('Current state:', state.board.board, state.board.bar)
             print('Possible states:')
-            for s in transitions:
-                print(s.board.board, s.board.bar)
+            for k in board2state.keys():
+                print(k)
+            print("Proposed state:", board_new.fingerprint)
             return self.ply(state)
 
     def _get_input(self):
