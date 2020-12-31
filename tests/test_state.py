@@ -1,7 +1,9 @@
+import time
 import pytest
 from collections import namedtuple
 
 from src.state import roll_dice, Board, State
+from src.state_pyx.state import State as StateFast
 
 
 def test_roll_dice():
@@ -196,3 +198,24 @@ def test_state_moves(board, roll, expected):
     # print(actual - expected)
     assert len(actual) == len(expected)
     assert actual == expected
+
+
+def _test_state_performance(state_cls):
+    t0 = time.time()
+    for i in range(1, 7):
+        for j in range(i, 7):
+            if i != j:
+                roll = i, j
+            else:
+                roll = i, i, i, i
+            ss = state_cls(roll=roll)
+            _ = ss.transitions
+            # print(roll, len(ss.transitions))
+    print("time elapsed:", time.time() - t0)
+
+
+def test_state_performance():
+    print("slow:")
+    _test_state_performance(State)
+    print("fast:")
+    _test_state_performance(StateFast)
