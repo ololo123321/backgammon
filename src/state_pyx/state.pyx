@@ -123,7 +123,7 @@ cdef class Board:
         if self._board[p] == 0:
             self._towers.remove(p)
 
-    cdef add_piece(self, int p):
+    cpdef add_piece(self, int p):
         if self._bar[1] > 0:
             self._bar[1] -= 1  # убрать шашку с bar
         if self._board[p] >= 0:  # не противник
@@ -252,8 +252,8 @@ cdef class State:
     """
     cdef Board board
     cdef tuple roll
-    cdef int winner
-    cdef int sign
+    cdef public int winner
+    cdef public int sign
 
     def __init__(self, board=Board(), roll=(), winner=0, sign=1):
         self.board = board
@@ -321,7 +321,7 @@ cdef class State:
             features.append(on_bar)  # число съеденных фигур
             features.append(15 - on_board - on_bar)  # число выкинутых фигур
         features.append(int(self.sign == 1))  # кто ходит
-        x = np.array(features).reshape(1, -1)
+        x = np.array(features).astype(np.int32).reshape(1, -1)
         return x
 
     @property
@@ -332,6 +332,10 @@ cdef class State:
     @property
     def reversed(self):
         return State(board=self.board.reversed, roll=self.roll, winner=self.winner, sign=self.sign * -1)
+
+    @property
+    def is_game_over(self):
+        return self.winner != 0
 
 
 if __name__ == '__main__':

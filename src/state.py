@@ -311,6 +311,10 @@ class State(ReprMixin):
     def reversed(self):
         return State(board=self.board.reversed, roll=self.roll, winner=self.winner, sign=self.sign * -1)
 
+    @property
+    def is_game_over(self):
+        return self.winner is not None
+
 
 if __name__ == '__main__':
 

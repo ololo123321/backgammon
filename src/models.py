@@ -8,7 +8,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 import tensorflow as tf
 
-from src.state import State
+# from src.state import State
+from src.state_pyx.state import State
 from src.environment import Environment
 from src.agents import HumanAgent, RandomAgent, TDAgent
 from src import encoders
@@ -101,7 +102,7 @@ class BaseModel(ABC, LoggerMixin):
             x = state.features
             step = 0
             t0 = time.time()
-            while state.winner is None:
+            while not state.is_game_over:
                 # 1. Выбрать лучшее состояние из возможных
                 assert state.sign == agent.sign
                 # print('=' * 10, f"step {step} starts", '=' * 10)

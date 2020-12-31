@@ -1,5 +1,6 @@
 import random
-from .state import State
+# from .state import State
+from .state_pyx.state import State
 
 
 class Environment:
@@ -12,7 +13,7 @@ class Environment:
     def play(self):
         i = random.randint(0, 1)
         # step = 0
-        while self.winner is None:
+        while not self.state.is_game_over:
             agent = self.agents[i]
             self.state.sign = agent.sign
             if self.verbose:
