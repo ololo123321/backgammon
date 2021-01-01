@@ -8,6 +8,8 @@ from src.models import ModelTD as Model
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--model_dir')
+    parser.add_argument('--encoder', type=str, default='TesauroEncoder')
+    parser.add_argument('--enc_params', type=str, default='{}')
     parser.add_argument('--num_games_training', type=int, default=10000, required=False)
     parser.add_argument('--val_period', type=int, default=1000, required=False)
     parser.add_argument('--num_games_test', type=int, default=100, required=False)
@@ -39,7 +41,10 @@ if __name__ == '__main__':
             print("building new model...")
             os.makedirs(args.model_dir, exist_ok=True)
             config = {
-                "model": {},
+                "model": {
+                    "encoder": args.encoder,
+                    "params": json.loads(args.enc_params)
+                },
                 "training": {
                     "model_dir": args.model_dir,
                     "num_games": args.num_games_training,

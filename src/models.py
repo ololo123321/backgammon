@@ -41,8 +41,8 @@ class BaseModel(ABC, LoggerMixin):
         """
         config = {
             "model": {
-                "hidden_dims": [80, 40],
-                "dropout": 0.1
+                "encoder": "TesauroEncoder",
+                "params": {}
             },
             "training": {
                 "model_dir": "/tmp/backgammon_agent",
@@ -240,7 +240,8 @@ class ModelTD(BaseModel):
 
         gamma = tf.constant(0.99)  # TODO: вынести в параметры
 
-        enc = encoders.TesauroEncoder()  # TODO: попробовать другие параметры инициализации
+        enc_cls = getattr(encoders, self.config['model']['encoder'])
+        enc = enc_cls(**self.config['model']['params'])
         x = enc(self.state_ph)
         self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
