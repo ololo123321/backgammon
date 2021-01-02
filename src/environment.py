@@ -51,7 +51,7 @@ class Environment:
         else:
             self._draw_locations(upper=True)
 
-        print('agent {} rolled ({}, {})'.format(agent.token, *self.state.roll))
+        print(f'agent {agent.token} rolled {self.state.roll}')
         print('current board:', self.state.board.board)
         print('current bar:', self.state.board.bar)
         print('=' * 80)

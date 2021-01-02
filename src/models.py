@@ -224,6 +224,10 @@ class ModelTD(BaseModel):
     def __init__(self, sess, config):
         super().__init__(sess=sess, config=config)
 
+        self.lamda = None
+        self.alpha = None
+        self.gamma = None
+
     def build(self):
         d = State().features_dim
         self.state_ph = tf.placeholder(shape=[None, d], dtype=tf.float32, name="state_ph")
@@ -233,16 +237,16 @@ class ModelTD(BaseModel):
         self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False)
 
         lambda_decay = tf.train.exponential_decay(0.9, self.global_step, 30000, 0.96, True)  # TODO: вынести в параметры
-        lamda = tf.maximum(0.1, lambda_decay, name='lambda')
+        self.lamda = tf.maximum(0.1, lambda_decay, name='lambda')
 
         alpha_decay = tf.train.exponential_decay(0.1, self.global_step, 40000, 0.96, True)  # TODO: вынести в параметры
-        alpha = tf.maximum(0.01, alpha_decay, name='alpha')
+        self.alpha = tf.maximum(0.01, alpha_decay, name='alpha')
 
-        gamma = tf.constant(0.99)  # TODO: вынести в параметры
+        self.gamma = tf.constant(0.99)  # TODO: вынести в параметры
 
         enc_cls = getattr(encoders, self.config['model']['encoder'])
         enc = enc_cls(**self.config['model']['params'])
-        x = enc(self.state_ph)
+        x = enc(self.state_ph, training=self.training_ph)
         self.V = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
 
         delta = tf.reduce_mean(self.V_next - self.V)
@@ -269,21 +273,25 @@ class ModelTD(BaseModel):
         tvars = tf.trainable_variables()
         grads = tf.gradients(self.V, tvars)
 
-        # https://arxiv.org/pdf/1512.04087.pdf, algorithm 1
-        apply_gradients = []
-        with tf.variable_scope('apply_gradients'):
-            for grad, var in zip(grads, tvars):
-                with tf.variable_scope('trace'):
-                    trace_var = tf.Variable(tf.zeros(grad.get_shape()), trainable=False, name='trace')
-                    trace = trace_var.assign(gamma * lamda * trace_var + grad)
-                grad_apply = var.assign_add(alpha * delta * trace)
-                apply_gradients.append(grad_apply)
+        apply_gradients = self._get_grad_ops(tvars=tvars, grads=grads, delta=delta)
 
         with tf.control_dependencies([global_step_op, game_step_op, loss_sum_op, loss_avg_ema_op]):
             self.train_op = tf.group(*apply_gradients, name='train')
 
         self.summaries_op = tf.summary.merge_all()
         self.sess.run(tf.global_variables_initializer())
+
+    def _get_grad_ops(self, tvars, grads, delta):
+        # https://arxiv.org/pdf/1512.04087.pdf, algorithm 1
+        apply_gradients = []
+        with tf.variable_scope('apply_gradients'):
+            for grad, var in zip(grads, tvars):
+                with tf.variable_scope('trace'):
+                    trace_var = tf.Variable(tf.zeros(grad.get_shape()), trainable=False, name='trace')
+                    trace = trace_var.assign(self.gamma * self.lamda * trace_var + grad)
+                grad_apply = var.assign_add(self.alpha * delta * trace)
+                apply_gradients.append(grad_apply)
+        return apply_gradients
 
 
 class ModelTDOnline(BaseModel):
@@ -348,6 +356,18 @@ class ModelTDOnline(BaseModel):
         self.summaries_op = tf.summary.merge_all()
         self.saver = tf.train.Saver(max_to_keep=1)
         self.sess.run(tf.global_variables_initializer())
+
+    def _get_grad_ops(self, tvars, grads, delta):
+        # https://arxiv.org/pdf/1512.04087.pdf, algorithm 1
+        apply_gradients = []
+        with tf.variable_scope('apply_gradients'):
+            for grad, var in zip(grads, tvars):
+                with tf.variable_scope('trace'):
+                    trace_var = tf.Variable(tf.zeros(grad.get_shape()), trainable=False, name='trace')
+                    trace = trace_var.assign(self.gamma * self.lamda * trace_var + grad)
+                grad_apply = var.assign_add(self.alpha * delta * trace)
+                apply_gradients.append(grad_apply)
+        return apply_gradients
 
 
 if __name__ == "__main__":

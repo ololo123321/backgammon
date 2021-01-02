@@ -136,28 +136,16 @@ cdef class Board:
 
 
 cdef class Node:
-    cdef Board board
-    cdef int depth
-    cdef tuple roll
-    cdef bint is_game_over
+    cdef public Board board
+    cdef public int depth
+    cdef public tuple roll
+    cdef public bint is_game_over
 
     def __init__(self, board, depth, roll, is_game_over):
         self.board = board
         self.depth = depth
         self.roll = roll
         self.is_game_over = is_game_over
-
-    property board:
-        def __get__(self): return self.board
-
-    property depth:
-        def __get__(self): return self.depth
-
-    property roll:
-        def __get__(self): return self.roll
-
-    property is_game_over:
-        def __get__(self): return self.is_game_over
 
 
 cdef dict add_leaf(Node node, dict leaves):
@@ -250,14 +238,16 @@ cdef class State:
     transitions = s.transitions
     s = choose_best_state(transitions)
     """
-    cdef Board board
-    cdef tuple roll
+    cdef public Board board
+    cdef public tuple roll
     cdef public int winner
     cdef public int sign
 
     def __init__(self, board=Board(), roll=(), winner=0, sign=1):
         self.board = board
         self.roll = roll
+        if len(self.roll) == 0:
+            self.roll = roll_dice(first_move=True)
         self.winner = winner
         self.sign = sign  # нужен только для определения победителя
 
