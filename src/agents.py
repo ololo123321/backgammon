@@ -6,9 +6,12 @@ from collections import namedtuple
 
 import numpy as np
 
-from .state import Board, State
-from .utils import choose_move_trained
-from .nodes import MCNode, GameTreeNode
+from src.state_pyx.state import Board, State
+from src.utils import choose_move_trained
+from src.nodes import MCNode, GameTreeNode
+
+
+TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
 
 
 class BaseAgent(ABC):
@@ -17,7 +20,7 @@ class BaseAgent(ABC):
         self.token, self.opponent_token = ('x', 'o') if self.sign == 1 else ('o', 'x')
 
     @abstractmethod
-    def ply(self, state: State) -> State:
+    def ply(self, state: State) -> TransitionInfo:
         """
         https://en.wikipedia.org/wiki/Ply_(game_theory)
         given a list of possible states agent must chose one of them
@@ -29,8 +32,10 @@ class RandomAgent(BaseAgent):
     def __init__(self, sign=1):
         super().__init__(sign)
 
-    def ply(self, state: State) -> State:
-        return random.choice(state.transitions)
+    def ply(self, state: State) -> TransitionInfo:
+        s = random.choice(state.transitions)
+        r = 0.5
+        return TransitionInfo(state=s, reward=r)
 
 
 class InvalidInput(Exception):
@@ -52,7 +57,7 @@ class HumanAgent(BaseAgent):
     def __init__(self, sign=1):
         super().__init__(sign)
 
-    def ply(self, state: State) -> State:
+    def ply(self, state: State) -> TransitionInfo:
         transitions = state.transitions
 
         if len(transitions) == 1:
@@ -63,7 +68,9 @@ class HumanAgent(BaseAgent):
         board2state = {s.board.fingerprint: s for s in transitions}
         board_new = self._run_turn(turn=turn, board=state.board)
         if board_new.fingerprint in board2state:
-            return board2state[board_new.fingerprint]
+            s = board2state[board_new.fingerprint]
+            r = 0.5
+            return TransitionInfo(state=s, reward=r)
         else:
             print('Invalid turn')
             print('Current state:', state.board.board, state.board.bar)
@@ -130,12 +137,11 @@ class HumanAgent(BaseAgent):
 
 
 class TDAgent(BaseAgent):
-    def __init__(self, sign=1, model=None, weights=None):
+    def __init__(self, sign=1, model=None):
         super().__init__(sign)
         self.model = model
-        self.weights = weights
 
-    def ply(self, state: State) -> State:
+    def ply(self, state: State) -> TransitionInfo:
         state.sign = self.sign  # для гарантии того, что self.sign и state.sign одинаковы
         transitions = state.transitions
         features = [s.features for s in transitions]
@@ -146,33 +152,67 @@ class TDAgent(BaseAgent):
         # Модель предсказывает вероятность выигрыша игрока +1.
         # Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
         if self.sign == 1:
-            idx_best = v.argmax()
+            i = v.argmax()
         else:
-            idx_best = v.argmin()
+            i = v.argmin()
 
-        s_best = transitions[idx_best]
-        return s_best
+        s = transitions[i]
+        r = v[i]
+        return TransitionInfo(state=s, reward=r)
+
+
+class KPlyAgent(BaseAgent):
+    """класс-обёртка над агентом, помогающий находить оптимальный ход с учётом просмотра на k ходов вперёд"""
+    def __init__(self, sign=1, k=2, agent=None):
+        super().__init__(sign)
+        self.k = k
+        self.agent = agent
+
+    def ply(self, state: State) -> TransitionInfo:
+        if self.k == 1:
+            return self.agent.ply(state)
+
+        transitions = state.transitions
+        rewards = []
+        for t in transitions:
+            root = GameTreeNode(
+                sign=self.sign,
+                parent=None,
+                state=t.copy,
+                agent=self.agent,
+                r=None,
+                p=1.0,
+                k=self.k - 1
+            )
+            r = root.expected_reward
+            rewards.append(r)
+        r_max = max(rewards)
+        i = rewards.index(r_max)
+        return TransitionInfo(state=transitions[i], reward=r_max)
 
 
 class MCAgentBase(BaseAgent):
     """
     Агент строит одно MC-дерево
     """
-    def __init__(self, sign=1, weights=None, n_simulations=100, C=1, p=1):
+    def __init__(self, sign=1, weights=None, n_simulations=100, c=1.0, p=1.0):
         super().__init__(sign=sign)
         self.weights = weights
         self.n_simulations = n_simulations
-        self.C = C
+        self.c = c
         self.p = p
 
+    def ply(self, state: State) -> TransitionInfo:
+        pass
+
     def mcts(self, rootstate):
-        rootnode = MCNode(sign=self.sign, state=rootstate, weights=self.weights, C=self.C, p=self.p)
+        rootnode = MCNode(sign=self.sign, state=rootstate, weights=self.weights, c=self.c, p=self.p)
         for i in range(self.n_simulations):
             node = rootnode
             state = rootstate.clone()
 
             while node.fully_expanded() and not node.terminal():
-                node = node.choose_child()
+                node = node.best_child
                 state.update(node.move)
 
             if not node.fully_expanded():
@@ -200,16 +240,16 @@ class MCAgent(BaseAgent):
     """
     Агент строит несколько MC-деревьев, посещения детей корня суммируются
     """
-    def __init__(self, sign=1, weights=None, n_simulations=100, C=1, n_trees=10, p=1):
+    def __init__(self, sign=1, weights=None, n_simulations=100, c=1.0, n_trees=10, p=1.0):
         super().__init__(sign)
         self.weights = weights
         self.n_simulations = n_simulations
-        self.C = C
+        self.c = c
         self.n_trees = n_trees
         self.p = p
 
-    def choose_move(self, state):
-        agent = MCAgentBase(weights=self.weights, n_simulations=self.n_simulations, C=self.C, p=self.p)
+    def ply(self, state: State) -> TransitionInfo:
+        agent = MCAgentBase(weights=self.weights, n_simulations=self.n_simulations, c=self.c, p=self.p)
         with Pool() as pool:
             res = pool.map(agent.mcts, [state] * self.n_trees)
 
@@ -223,21 +263,10 @@ class MCAgent(BaseAgent):
         return random.choice([move for str_move, (v, move) in visits.items() if v == v_max])
 
 
-class KPlyAgent(BaseAgent):
-    def __init__(self, sign=1, k=2, weights=None):
-        super().__init__(sign)
-        self.k = k
-        self.weights = weights
-
-    def choose_move(self, state):
-        if self.k > 1:
-            with Pool() as pool:
-                res = pool.map(GameTreeNode(sign=self.sign, state=state, weights=self.weights, k=self.k-1).expected_reward,
-                               state.get_moves())
-            rewards = {}
-            for r, move in res:
-                rewards[str(move)] = r, move
-
-            d = {r: move for str_move, (r, move) in rewards.items()}
-            return d[max(d)]  # награда всегда максимизируется, так как считается с учётом self.sign
-        return choose_move_trained(state, weights=self.weights)
+if __name__ == '__main__':
+    from src.state_pyx.state import State
+    base_agent = RandomAgent()
+    agent = KPlyAgent(agent=base_agent, k=2)
+    s = State()
+    info = agent.ply(s)
+    print(info)

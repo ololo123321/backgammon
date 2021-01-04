@@ -327,6 +327,10 @@ cdef class State:
     def is_game_over(self):
         return self.winner != 0
 
+    @property
+    def copy(self):
+        return State(board=self.board.copy, roll=self.roll, winner=self.winner, sign=self.sign)
+
 
 if __name__ == '__main__':
 

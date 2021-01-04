@@ -197,6 +197,7 @@ class BaseModel(ABC, LoggerMixin):
 
         inputs = {
             "state": tf.saved_model.utils.build_tensor_info(self.state_ph),
+            "training": tf.saved_model.utils.build_tensor_info(self.training_ph)
         }
 
         outputs = {
@@ -356,18 +357,6 @@ class ModelTDOnline(BaseModel):
         self.summaries_op = tf.summary.merge_all()
         self.saver = tf.train.Saver(max_to_keep=1)
         self.sess.run(tf.global_variables_initializer())
-
-    def _get_grad_ops(self, tvars, grads, delta):
-        # https://arxiv.org/pdf/1512.04087.pdf, algorithm 1
-        apply_gradients = []
-        with tf.variable_scope('apply_gradients'):
-            for grad, var in zip(grads, tvars):
-                with tf.variable_scope('trace'):
-                    trace_var = tf.Variable(tf.zeros(grad.get_shape()), trainable=False, name='trace')
-                    trace = trace_var.assign(self.gamma * self.lamda * trace_var + grad)
-                grad_apply = var.assign_add(self.alpha * delta * trace)
-                apply_gradients.append(grad_apply)
-        return apply_gradients
 
 
 if __name__ == "__main__":

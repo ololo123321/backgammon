@@ -18,7 +18,7 @@ class Environment:
             self.state.sign = agent.sign
             if self.verbose:
                 self.draw(agent)
-            s = agent.ply(self.state)
+            s, _ = agent.ply(self.state)
             self.state = s.reversed
             self.winner = s.winner
             i = (i + 1) % 2
