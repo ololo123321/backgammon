@@ -265,8 +265,8 @@ class MCAgent(BaseAgent):
 
 if __name__ == '__main__':
     from src.state_pyx.state import State
-    base_agent = RandomAgent()
-    agent = KPlyAgent(agent=base_agent, k=2)
-    s = State()
-    info = agent.ply(s)
+    base_agent_ = RandomAgent()
+    agent_ = KPlyAgent(agent=base_agent_, k=2)
+    s_ = State()
+    info = agent_.ply(s_)
     print(info)

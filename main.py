@@ -3,6 +3,8 @@ import json
 import tensorflow as tf
 from argparse import ArgumentParser
 from src.models import ModelTD as Model
+from src.agents import TDAgent, KPlyAgent, RandomAgent, HumanAgent
+from src.environment import Environment
 
 
 if __name__ == '__main__':
@@ -30,7 +32,14 @@ if __name__ == '__main__':
         if args.test:
             model.test(n_episodes=args.num_games_test)
         else:
-            model.play()
+            # model.play()
+            human = HumanAgent(1)
+            # opponent = RandomAgent(sign=1)
+            opponent = TDAgent(sign=1, model=model)
+            opponent = KPlyAgent(sign=-1, k=2, agent=opponent)
+            agents = [human, opponent]
+            env = Environment(agents, verbose=True)
+            env.play()
 
     else:
         if args.restore:
