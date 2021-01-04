@@ -22,68 +22,60 @@ cdef tuple roll_dice(bint first_move = False):
 
 
 cdef class Board:
-    cdef list _board
-    cdef dict _bar
-    cdef set _towers
+    cdef public list board
+    cdef public dict bar
+    cdef public set towers
 
     def __init__(self, list board = None, dict bar=None):
         if board is not None:
-            self._board = board
+            self.board = board
         else:
-            self._board = [2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 5, -5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2]  # доска
+            self.board = [2, 0, 0, 0, 0, -5, 0, -3, 0, 0, 0, 5, -5, 0, 0, 0, 3, 0, 5, 0, 0, 0, 0, -2]  # доска
 
         if bar is not None:
-            self._bar = bar
+            self.bar = bar
         else:
-            self._bar = {-1: 0, 1: 0}  # выкинутые фигуры; 1 - свои, -1 - противника
+            self.bar = {-1: 0, 1: 0}  # выкинутые фигуры; 1 - свои, -1 - противника
 
         # индексы позиций со своими фигурами.
         # для большей эффективности удобно их посчитать один раз, пройдя цикл по всей доске,
         # а затем только обновлять этот список без проходов по всей доске
-        self._towers = {i for i, x in enumerate(self._board) if x > 0}
+        self.towers = {i for i, x in enumerate(self.board) if x > 0}
 
         # # хранение индекса первой башни, чтоб каждый раз его не пересчитывать за O(num towers)
         # self._t_min = min(self._towers)
 
-    property board:
-        def __get__(self): return self._board
+    @property
+    def fingerprint(self):
+        """
+        минимальное хэшируемое представление доски.
+        """
+        cdef tuple board
+        cdef tuple bar
+        board = tuple(self.board)
+        bar = self.bar[-1], self.bar[1]
+        return board, bar
 
-    property bar:
-        def __get__(self): return self._bar
+    @property
+    def reversed(self):
+        cdef list board
+        cdef dict bar
+        board = [-x for x in self.board[::-1]]
+        bar = {-k: v for k, v in self.bar.items()}
+        return Board(board=board, bar=bar)
 
-    property towers:
-        def __get__(self): return self._towers
+    @property
+    def is_empty(self):
+        """не осталось своих фигур"""
+        return len(self.towers) == 0
 
-    property fingerprint:
-        def __get__(self):
-            """
-            минимальное хэшируемое представление доски.
-            """
-            cdef tuple board
-            cdef tuple bar
-            board = tuple(self._board)
-            bar = self._bar[-1], self._bar[1]
-            return board, bar
+    @property
+    def copy(self):
+        return Board(board=self.board.copy(), bar=self.bar.copy())
 
-    property reversed:
-        def __get__(self):
-            cdef list board
-            cdef dict bar
-            board = [-x for x in self._board[::-1]]
-            bar = {-k: v for k, v in self._bar.items()}
-            return Board(board=board, bar=bar)
-
-    property is_empty:
-        def __get__(self):
-            """не осталось своих фигур"""
-            return len(self._towers) == 0
-
-    property copy:
-        def __get__(self): return Board(board=self._board.copy(), bar=self._bar.copy())
-
-    # TODO: сделать не за O(n)
-    property _t_min:
-        def __get__(self): return min(self._towers)
+    @property
+    def _t_min(self):  # TODO: сделать не за O(n)
+        return min(self.towers)
 
     cdef bint is_valid_move(self, int start, int end):
         # end = start + step
@@ -92,7 +84,7 @@ cdef class Board:
         if end <= 23:
             # 1. на позиции start должна быть фигура
             # 2. на позиции end должна быть либо одна фигура противника, либо пусто, либо свои фигуры
-            return (self._board[start] >= 1) and (self._board[end] >= -1)
+            return (self.board[start] >= 1) and (self.board[end] >= -1)
         # выкидывание фигуры с доски
         else:
             # 1. все фигуры в зоне [18, 23]
@@ -101,7 +93,7 @@ cdef class Board:
             # соответствующей номеру на кубике, либо левее
             return (self._t_min >= 18) and ((step == 24 - start) or (start == self._t_min))
 
-    cpdef void move(self, int start, int end):
+    cpdef move(self, int start, int end):
         """
         Предполагается, что валидность хода уже проверена
         :param start: позиция начала
@@ -112,27 +104,27 @@ cdef class Board:
         if end <= 23:
             self.add_piece(end)
 
-    cdef remove_piece(self, int p):
+    cpdef remove_piece(self, int p):
         """
         Удалить фигуру с позиции p
         :param p: номер позиции
         :return:
         """
-        self._board[p] -= 1  # убрать фигуру с позиции start
+        self.board[p] -= 1  # убрать фигуру с позиции start
         # если на позиции start фигур не осталось, то удалить башню
-        if self._board[p] == 0:
-            self._towers.remove(p)
+        if self.board[p] == 0:
+            self.towers.remove(p)
 
     cpdef add_piece(self, int p):
-        if self._bar[1] > 0:
-            self._bar[1] -= 1  # убрать шашку с bar
-        if self._board[p] >= 0:  # не противник
-            self._board[p] += 1  # добавить шашку
-        elif self._board[p] == -1:  # одна шашка противника
-            self._board[p] = 1  # поставить одну шашку
-            self._bar[-1] += 1  # добавить одну шашку противника в bar
-        if self._board[p] == 1:  # если p не была в towers
-            self._towers.add(p)
+        if self.bar[1] > 0:
+            self.bar[1] -= 1  # убрать шашку с bar
+        if self.board[p] >= 0:  # не противник
+            self.board[p] += 1  # добавить шашку
+        elif self.board[p] == -1:  # одна шашка противника
+            self.board[p] = 1  # поставить одну шашку
+            self.bar[-1] += 1  # добавить одну шашку противника в bar
+        if self.board[p] == 1:  # если p не была в towers
+            self.towers.add(p)
 
 
 cdef class Node:
@@ -263,7 +255,7 @@ cdef class State:
 
         if self.winner != 0:
             print(f"game over due to winner found: {self.winner}")
-            return []
+            return [self.copy]
 
         leaves = {}
         max_depth = len(self.roll)

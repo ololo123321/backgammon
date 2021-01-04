@@ -108,7 +108,7 @@ class BaseModel(ABC, LoggerMixin):
                 # print('=' * 10, f"step {step} starts", '=' * 10)
                 # print("current agent:", agent.sign)
                 # print("current state:", state)
-                state = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
+                state, _ = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
                 # print("chosen state:", state)
 
                 # 2. Развернуть состояние к противнику
