@@ -15,7 +15,7 @@ class Environment:
         for _ in trange(num_episodes):
             winner = self.play()
             res[winner] += 1
-        print("result:", res)
+        return res
 
     def play(self):
         i = random.randint(0, 1)

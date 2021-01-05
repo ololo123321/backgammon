@@ -302,4 +302,5 @@ if __name__ == '__main__':
     agent_2 = TDAgentSavedModel(sign=-1, export_dir=export_dir)
     agent_2 = KPlyAgent(sign=-1, k=2, agent=agent_2)
     env = Environment(agents=[agent_1, agent_2], verbose=False)
-    env.contest(num_episodes=100)
+    res = env.contest(num_episodes=100)
+    print(res)

@@ -102,6 +102,8 @@ class GameTreeNode:
         return r
 
     def expand(self):
+        if self.state.is_game_over:
+            return
         # в одно состяоние можно прийти разными путями:
         # нарпимер, если выпадет (1,1) и (1,3), то можно походить одной фигурой 4 раза.
         board2prob = defaultdict(float)
