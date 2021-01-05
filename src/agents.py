@@ -206,7 +206,7 @@ class KPlyAgent(BaseAgent):
         rewards = []
         for t in transitions:
             root = GameTreeNode(
-                sign=self.sign,
+                sign=self.sign * -1,
                 parent=None,
                 state=t.copy,
                 agent=self.agent,

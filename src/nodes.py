@@ -121,10 +121,9 @@ class GameTreeNode:
             b = s.board.fingerprint
             board2info[b] = s, r
             board2prob[b] += p
-        child_sign = self.sign * -1
         for b, (s, r) in board2info.items():
             p = board2prob[b] * self.p
-            child = GameTreeNode(sign=child_sign, parent=self, state=s, agent=self.agent, r=r, p=p, k=self.k)
+            child = GameTreeNode(sign=self.sign * -1, parent=self, state=s, agent=self.agent, r=r, p=p, k=self.k)
             self.children.append(child)
 
     @staticmethod
