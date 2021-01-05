@@ -201,7 +201,7 @@ class BaseModel(ABC, LoggerMixin):
         }
 
         outputs = {
-            self.V.name: tf.saved_model.utils.build_tensor_info(self.V)
+            "value": tf.saved_model.utils.build_tensor_info(self.V)
         }
 
         prediction_signature = tf.saved_model.signature_def_utils.build_signature_def(

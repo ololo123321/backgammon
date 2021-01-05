@@ -4,6 +4,7 @@ from multiprocessing import Pool
 from abc import ABC, abstractmethod
 from collections import namedtuple
 
+import tensorflow as tf
 import numpy as np
 
 from src.state_pyx.state import Board, State
@@ -146,7 +147,7 @@ class TDAgent(BaseAgent):
         transitions = state.transitions
         features = [s.features for s in transitions]
         x = np.concatenate(features, axis=0)  # [num_transitions, num_features]
-        v = self.model.get_output(x)  # [num_transitions, 1]
+        v = self._get_values(x)  # [num_transitions, 1]
         v = v.flatten()  # [num_transitions]
 
         # Модель предсказывает вероятность выигрыша игрока +1.
@@ -159,6 +160,24 @@ class TDAgent(BaseAgent):
         s = transitions[i]
         r = v[i]
         return TransitionInfo(state=s, reward=r)
+
+    def _get_values(self, x):
+        v = self.model.get_output(x)
+        return v
+
+
+class TDAgentSavedModel(TDAgent):
+    def __init__(self, sign, export_dir):
+        super().__init__(sign=sign, model=None)
+        self.predict_fn = tf.contrib.predictor.from_saved_model(export_dir)
+
+    def _get_values(self, x):
+        res = self.predict_fn({
+            "state": x,
+            "training": False
+        })
+        v = res["value"]
+        return v
 
 
 class KPlyAgent(BaseAgent):
@@ -264,9 +283,23 @@ class MCAgent(BaseAgent):
 
 
 if __name__ == '__main__':
-    from src.state_pyx.state import State
-    base_agent_ = RandomAgent()
-    agent_ = KPlyAgent(agent=base_agent_, k=2)
-    s_ = State()
-    info = agent_.ply(s_)
-    print(info)
+    # from src.state_pyx.state import State
+    # base_agent_ = RandomAgent()
+    # agent_ = KPlyAgent(agent=base_agent_, k=2)
+    # s_ = State()
+    # info = agent_.ply(s_)
+    # print(info)
+    import os
+    from src.models import ModelTD
+    from src.environment import Environment
+    sess = tf.Session()
+    model = ModelTD(sess=sess, config=None)
+    model.restore("/tmp/backgammon_agent")
+    export_dir = "/tmp/backgammon_agent_saved_model"
+    os.system(f'rm -r {export_dir}')
+    model.export_inference_graph(export_dir)
+    agent_1 = TDAgent(sign=1, model=model)
+    agent_2 = TDAgentSavedModel(sign=-1, export_dir=export_dir)
+    agent_2 = KPlyAgent(sign=-1, k=2, agent=agent_2)
+    env = Environment(agents=[agent_1, agent_2], verbose=False)
+    env.contest(num_episodes=100)

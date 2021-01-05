@@ -1,4 +1,5 @@
 import random
+from tqdm import trange
 # from .state import State
 from .state_pyx.state import State
 
@@ -8,7 +9,13 @@ class Environment:
         self.agents = agents
         self.verbose = verbose
         self.state = State()
-        self.winner = None
+
+    def contest(self, num_episodes=100):
+        res = {-1: 0, 1: 0}
+        for _ in trange(num_episodes):
+            winner = self.play()
+            res[winner] += 1
+        print("result:", res)
 
     def play(self):
         i = random.randint(0, 1)
@@ -20,12 +27,14 @@ class Environment:
                 self.draw(agent)
             s, _ = agent.ply(self.state)
             self.state = s.reversed
-            self.winner = s.winner
             i = (i + 1) % 2
             # step += 1
             # if step > 200:
             #     print(self.state)
             #     raise
+        winner = self.state.winner
+        self.state = State()
+        return winner
 
     def draw(self, agent):
         if agent.sign == 1:
