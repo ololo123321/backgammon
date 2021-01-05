@@ -143,6 +143,9 @@ class TDAgent(BaseAgent):
         self.model = model
 
     def ply(self, state: State) -> TransitionInfo:
+        """
+        Награда = вероятность выигрыша игрока со знаком self.sign, т.е. от лица self.
+        """
         state.sign = self.sign  # для гарантии того, что self.sign и state.sign одинаковы
         transitions = state.transitions
         features = [s.features for s in transitions]
@@ -152,16 +155,20 @@ class TDAgent(BaseAgent):
 
         # Модель предсказывает вероятность выигрыша игрока +1.
         # Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
-        if self.sign == 1:
-            i = v.argmax()
-        else:
-            i = v.argmin()
+        # if self.sign == 1:
+        #     i = v.argmax()
+        # else:
+        #     i = v.argmin()
+
+        if self.sign == -1:
+            v = 1.0 - v
+        i = v.argmax()
 
         s = transitions[i]
         r = v[i]
         return TransitionInfo(state=s, reward=r)
 
-    def _get_values(self, x):
+    def _get_values(self, x: np.ndarray) -> np.ndarray:
         v = self.model.get_output(x)
         return v
 
@@ -171,7 +178,7 @@ class TDAgentSavedModel(TDAgent):
         super().__init__(sign=sign, model=None)
         self.predict_fn = tf.contrib.predictor.from_saved_model(export_dir)
 
-    def _get_values(self, x):
+    def _get_values(self, x: np.ndarray) -> np.ndarray:
         res = self.predict_fn({
             "state": x,
             "training": False
@@ -181,14 +188,18 @@ class TDAgentSavedModel(TDAgent):
 
 
 class KPlyAgent(BaseAgent):
-    """класс-обёртка над агентом, помогающий находить оптимальный ход с учётом просмотра на k ходов вперёд"""
-    def __init__(self, sign=1, k=2, agent=None):
+    """
+    Класс-обёртка над агентом, помогающий находить оптимальный ход с учётом просмотра на k ходов вперёд.
+    k = 0 -> жадная стратегия
+    """
+    def __init__(self, sign=1, k=1, agent=None):
         super().__init__(sign)
+        assert k >= 0
         self.k = k
         self.agent = agent
 
     def ply(self, state: State) -> TransitionInfo:
-        if self.k == 1:
+        if self.k == 0:
             return self.agent.ply(state)
 
         transitions = state.transitions
@@ -201,9 +212,10 @@ class KPlyAgent(BaseAgent):
                 agent=self.agent,
                 r=None,
                 p=1.0,
-                k=self.k - 1
+                k=self.k
             )
             r = root.expected_reward
+            r = r if self.k % 2 == 0 else 1.0 - r
             rewards.append(r)
         r_max = max(rewards)
         i = rewards.index(r_max)
