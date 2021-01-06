@@ -5,25 +5,27 @@ from .state_pyx.state import State
 
 
 class Environment:
-    def __init__(self, agents=None, verbose=False):
+    def __init__(self, agents=None):
         self.agents = agents
-        self.verbose = verbose
         self.state = State()
 
-    def contest(self, num_episodes=100):
+    def contest(self, num_episodes=100, verbose=False, print_fn=None):
+        print_fn = print_fn if print_fn is not None else print
         res = {-1: 0, 1: 0}
-        for _ in trange(num_episodes):
+        for i in trange(num_episodes):
             winner = self.play()
             res[winner] += 1
+            if verbose:
+                print_fn(f"[episode {i + 1} / {num_episodes}] result: {res}")
         return res
 
-    def play(self):
+    def play(self, verbose=False):
         i = random.randint(0, 1)
         # step = 0
         while not self.state.is_game_over:
             agent = self.agents[i]
             self.state.sign = agent.sign
-            if self.verbose:
+            if verbose:
                 self.draw(agent)
             s, _ = agent.ply(self.state)
             self.state = s.reversed

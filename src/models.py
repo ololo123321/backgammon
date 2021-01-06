@@ -156,25 +156,14 @@ class BaseModel(ABC, LoggerMixin):
         self.test(n_episodes=1000)
 
     def test(self, n_episodes=100):
-        td_wins = 0
-        random_wins = 0
-        for i in range(n_episodes):
-            sgn = random.choice([-1, 1])
-            agents = [TDAgent(sgn, model=self), RandomAgent(-sgn)]
-            env = Environment(agents)
-            env.play()
-
-            if env.winner == sgn:
-                td_wins += 1
-            else:
-                random_wins += 1
-
-            self.logger.debug(f'Episode: {i}, TD-Agent: {td_wins}, RandomAgent: {random_wins}')
+        agents = [TDAgent(sign=-1, model=self), RandomAgent(sign=1)]
+        env = Environment(agents)
+        env.contest(num_episodes=n_episodes, verbose=False, print_fn=self.logger.debug)
 
     def play(self):
-        agents = [TDAgent(-1, self), HumanAgent(1)]
-        env = Environment(agents, verbose=True)
-        env.play()
+        agents = [TDAgent(sign=-1, model=self), HumanAgent(sign=1)]
+        env = Environment(agents)
+        env.play(verbose=True)
 
     def restore(self, model_dir: str = None):
         # подгрузка конфига

@@ -95,7 +95,7 @@ class GameTreeNode:
 
     @property
     def expected_reward(self) -> float:
-        if self.state.is_game_over:
+        if self.state.is_terminal:
             return 1.0
         nodes = [self]
         for _ in range(self.k):
@@ -112,7 +112,7 @@ class GameTreeNode:
         return r
 
     def expand(self):
-        if self.state.is_game_over:
+        if self.state.is_terminal:
             return
         # в одно состяоние можно прийти разными путями:
         # нарпимер, если выпадет (1,1) и (1,3), то можно походить одной фигурой 4 раза.

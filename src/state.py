@@ -204,7 +204,7 @@ class State(ReprMixin):
         is_double = max_depth == 4
 
         # узел игрового дерева
-        Node = namedtuple("Node", ["board", "depth", "roll", "is_game_over"])
+        Node = namedtuple("Node", ["board", "depth", "roll", "is_terminal"])
 
         def add_leaf(node: Node):
             leaves[node.board.fingerprint] = node
@@ -232,14 +232,14 @@ class State(ReprMixin):
                 # если можно съеденную фигурку поставить на доску:
                 if board_copy.board[home_position] >= -1:
                     board_copy.add_piece(home_position)
-                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=False)
                     extend(child)
                 else:
                     # если дубль, то мы уже не можем сделать ход
                     if is_double:
                         add_leaf(node)
                     else:
-                        child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                        child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=False)
                         extend(child)
             else:
                 # пытаемся сделать ход с каждой башни
@@ -252,20 +252,20 @@ class State(ReprMixin):
                         board_copy.move(start=start, end=end)
                         if board_copy.is_empty:
                             # пустая доска ~ текущий игрок победил
-                            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=True)
+                            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=True)
                             add_leaf(child)
                             # return
                         else:
-                            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=False)
                             extend(child)
                 # нельзя сделать ни одного хода
                 if is_leaf:
                     add_leaf(node)
 
-        root = Node(board=self.board, depth=0, roll=self.roll, is_game_over=False)
+        root = Node(board=self.board, depth=0, roll=self.roll, is_terminal=False)
         extend(root)
         if len(self.roll) == 2:
-            root = Node(board=self.board, depth=0, roll=self.roll[::-1], is_game_over=False)
+            root = Node(board=self.board, depth=0, roll=self.roll[::-1], is_terminal=False)
             extend(root)
 
         # гарантируется непустота leaves
@@ -274,7 +274,7 @@ class State(ReprMixin):
         res = []
         roll_next = roll_dice()
         for node in leaves.values():
-            if node.is_game_over:
+            if node.is_terminal:
                 s = State(board=node.board, roll=roll_next, winner=self.sign, sign=self.sign)
                 res.append(s)
             elif node.depth == max_depth:
