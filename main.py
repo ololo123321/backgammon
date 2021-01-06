@@ -27,18 +27,22 @@ if __name__ == '__main__':
 
     if args.test or args.play:
         model = Model(sess=sess, config=None)
-        model.restore(model_dir=args.model_dir)
+        # model.restore(model_dir=args.model_dir)
 
         if args.test:
             model.test(n_episodes=args.num_games_test)
         else:
             # model.play()
-            human = HumanAgent(1)
-            # opponent = RandomAgent(sign=1)
-            opponent = TDAgent(sign=1, model=model)
-            opponent = KPlyAgent(sign=-1, k=2, agent=opponent)
+
+            # human = HumanAgent(1)
+            human = RandomAgent(sign=1)
+
+            opponent = RandomAgent(sign=-1)
+            # opponent = TDAgent(sign=-1, model=model)
+            opponent = KPlyAgent(sign=-1, k=1, agent=opponent)
+
             agents = [human, opponent]
-            env = Environment(agents, verbose=True)
+            env = Environment(agents, verbose=False)
             env.play()
 
     else:

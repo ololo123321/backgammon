@@ -78,9 +78,8 @@ class MCNode:
 
 
 class GameTreeNode:
-    def __init__(self, sign=1, parent=None, state=None, agent=None, r=None, p=1.0, k=2):
+    def __init__(self, sign=1, state=None, agent=None, r=None, p=1.0, k=2):
         self.sign = sign  # данный знак присваивается всем узлам дерева
-        self.parent = parent
         self.state = state
         self.agent = agent
         self.r = r  # награда за достижение данного узла
@@ -96,6 +95,8 @@ class GameTreeNode:
 
     @property
     def expected_reward(self) -> float:
+        if self.state.is_game_over:
+            return 1.0
         nodes = [self]
         for _ in range(self.k):
             leaves_level = []
@@ -103,6 +104,8 @@ class GameTreeNode:
                 node.expand()
                 leaves_level += node.children
             nodes = leaves_level
+        p = sum(node.p for node in nodes)
+        assert round(p, 6) == 1.0, f"p actual: {p}, num nodes: {len(nodes)}, is terminal: {self.state.is_game_over}"
         r = sum(node.r * node.p for node in nodes)
         return r
 
@@ -123,7 +126,7 @@ class GameTreeNode:
             board2prob[b] += p
         for b, (s, r) in board2info.items():
             p = board2prob[b] * self.p
-            child = GameTreeNode(sign=self.sign * -1, parent=self, state=s, agent=self.agent, r=r, p=p, k=self.k)
+            child = GameTreeNode(sign=self.sign * -1, state=s.copy, agent=self.agent, r=r, p=p, k=self.k)
             self.children.append(child)
 
     @staticmethod

@@ -155,15 +155,10 @@ class TDAgent(BaseAgent):
 
         # Модель предсказывает вероятность выигрыша игрока +1.
         # Соответственно, нужно получить вероятность противоположного события, если данный игрок -1.
-        # if self.sign == 1:
-        #     i = v.argmax()
-        # else:
-        #     i = v.argmin()
-
         if self.sign == -1:
             v = 1.0 - v
-        i = v.argmax()
 
+        i = v.argmax()
         s = transitions[i]
         r = v[i]
         return TransitionInfo(state=s, reward=r)
@@ -199,6 +194,12 @@ class KPlyAgent(BaseAgent):
         self.agent = agent
 
     def ply(self, state: State) -> TransitionInfo:
+        """
+        1. получить все доступные состояния s
+        2. для каждого доступного состояния s построить игровое дерево T глубины k
+        3. для каждого игрового дерева T посчитать матожиадние награды по листьям:
+           E[r] = sum(p(leaf) * reward(leaf) for leaf in leaves(T))
+        """
         if self.k == 0:
             return self.agent.ply(state)
 
@@ -206,8 +207,7 @@ class KPlyAgent(BaseAgent):
         rewards = []
         for t in transitions:
             root = GameTreeNode(
-                sign=self.sign * -1,
-                parent=None,
+                sign=self.sign * -1,  # следующий ход противника
                 state=t.copy,
                 agent=self.agent,
                 r=None,
@@ -215,11 +215,16 @@ class KPlyAgent(BaseAgent):
                 k=self.k
             )
             r = root.expected_reward
-            r = r if self.k % 2 == 0 else 1.0 - r
             rewards.append(r)
-        r_max = max(rewards)
-        i = rewards.index(r_max)
-        return TransitionInfo(state=transitions[i], reward=r_max)
+        # каждому доступному состоянию соответствует своё игровое дерево, в котором первый ход делает противник.
+        # следовательно, на нечётных глубинах получаем награды от лица противника, а на чётных - свои.
+        # при этом свои хочется максимизировать, а противника - минимизировать.
+        if self.k % 2 == 0:
+            r_best = max(rewards)
+        else:
+            r_best = min(rewards)
+        i = rewards.index(r_best)
+        return TransitionInfo(state=transitions[i], reward=r_best)
 
 
 class MCAgentBase(BaseAgent):
