@@ -18,5 +18,5 @@ if __name__ == '__main__':
     opponent = KPlyAgent(sign=-sgn, k=args.k, agent=opponent)
 
     agents = [human, opponent]
-    env = Environment(agents, verbose=True)
-    env.play()
+    env = Environment(agents)
+    env.play(verbose=True)
