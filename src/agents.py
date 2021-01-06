@@ -10,7 +10,6 @@ import numpy as np
 from src.state_pyx.state import Board, State
 from src.utils import choose_move_trained
 from src.nodes import MCNode, GameTreeNode
-from src.models import ModelTD
 
 
 TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
@@ -151,9 +150,7 @@ class TDAgent(BaseAgent):
         return cls(sign=sign, model=model)
 
     @classmethod
-    def from_checkpoint(cls, sign, model_dir, sess):
-        model = ModelTD(sess=sess, config=None)
-        model.restore(model_dir=model_dir)
+    def from_checkpoint(cls, sign, model):
         return cls(sign=sign, model=model)
 
     def ply(self, state: State) -> TransitionInfo:
