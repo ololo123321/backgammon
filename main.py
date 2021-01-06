@@ -3,7 +3,7 @@ import json
 import tensorflow as tf
 from argparse import ArgumentParser
 from src.models import ModelTD as Model
-from src.agents import TDAgent, KPlyAgent, RandomAgent, HumanAgent
+from src.agents import TDAgent, KPlyAgent, HumanAgent
 from src.environment import Environment
 
 
@@ -20,6 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--restore', action='store_true', required=False)
     parser.add_argument('--test', action='store_true', required=False)
     parser.add_argument('--play', action='store_true', required=False)
+    parser.add_argument('--human_sign', type=int, default=1, required=False)
     args = parser.parse_args()
     print(args)
 
@@ -27,22 +28,23 @@ if __name__ == '__main__':
 
     if args.test or args.play:
         model = Model(sess=sess, config=None)
-        # model.restore(model_dir=args.model_dir)
+        model.restore(model_dir=args.model_dir)
 
         if args.test:
             model.test(n_episodes=args.num_games_test)
         else:
             # model.play()
 
-            # human = HumanAgent(1)
-            human = RandomAgent(sign=1)
+            sgn = args.human_sign
+            human = HumanAgent(sign=sgn)
+            # human = RandomAgent(sign=1)
 
-            opponent = RandomAgent(sign=-1)
-            # opponent = TDAgent(sign=-1, model=model)
-            opponent = KPlyAgent(sign=-1, k=1, agent=opponent)
+            # opponent = RandomAgent(sign=-1)
+            opponent = TDAgent(sign=-sgn, model=model)
+            opponent = KPlyAgent(sign=-sgn, k=1, agent=opponent)
 
             agents = [human, opponent]
-            env = Environment(agents, verbose=False)
+            env = Environment(agents, verbose=True)
             env.play()
 
     else:

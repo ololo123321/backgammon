@@ -10,6 +10,7 @@ import numpy as np
 from src.state_pyx.state import Board, State
 from src.utils import choose_move_trained
 from src.nodes import MCNode, GameTreeNode
+from src.models import ModelTD
 
 
 TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
@@ -63,7 +64,9 @@ class HumanAgent(BaseAgent):
 
         if len(transitions) == 1:
             print('Singe possible move is available')
-            return transitions[0]
+            s = transitions[0]
+            r = 0.5
+            return TransitionInfo(state=s, reward=r)
 
         turn = self._get_input()
         board2state = {s.board.fingerprint: s for s in transitions}
@@ -142,6 +145,17 @@ class TDAgent(BaseAgent):
         super().__init__(sign)
         self.model = model
 
+    @classmethod
+    def from_saved_model(cls, sign, export_dir):
+        model = SavedModelWrapper(export_dir=export_dir)
+        return cls(sign=sign, model=model)
+
+    @classmethod
+    def from_checkpoint(cls, sign, model_dir, sess):
+        model = ModelTD(sess=sess, config=None)
+        model.restore(model_dir=model_dir)
+        return cls(sign=sign, model=model)
+
     def ply(self, state: State) -> TransitionInfo:
         """
         Награда = вероятность выигрыша игрока со знаком self.sign, т.е. от лица self.
@@ -150,7 +164,7 @@ class TDAgent(BaseAgent):
         transitions = state.transitions
         features = [s.features for s in transitions]
         x = np.concatenate(features, axis=0)  # [num_transitions, num_features]
-        v = self._get_values(x)  # [num_transitions, 1]
+        v = self.model.get_output(x)  # [num_transitions, 1]
         v = v.flatten()  # [num_transitions]
 
         # Модель предсказывает вероятность выигрыша игрока +1.
@@ -163,23 +177,16 @@ class TDAgent(BaseAgent):
         r = v[i]
         return TransitionInfo(state=s, reward=r)
 
-    def _get_values(self, x: np.ndarray) -> np.ndarray:
-        v = self.model.get_output(x)
-        return v
 
-
-class TDAgentSavedModel(TDAgent):
-    def __init__(self, sign, export_dir):
-        super().__init__(sign=sign, model=None)
+class SavedModelWrapper:
+    def __init__(self, export_dir):
         self.predict_fn = tf.contrib.predictor.from_saved_model(export_dir)
 
-    def _get_values(self, x: np.ndarray) -> np.ndarray:
-        res = self.predict_fn({
+    def get_output(self, x: np.ndarray) -> np.ndarray:
+        return self.predict_fn({
             "state": x,
             "training": False
-        })
-        v = res["value"]
-        return v
+        })["value"]
 
 
 class KPlyAgent(BaseAgent):
@@ -208,7 +215,7 @@ class KPlyAgent(BaseAgent):
         for t in transitions:
             root = GameTreeNode(
                 sign=self.sign * -1,  # следующий ход противника
-                state=t.copy,
+                state=t.reversed,
                 agent=self.agent,
                 r=None,
                 p=1.0,
@@ -299,25 +306,25 @@ class MCAgent(BaseAgent):
         return random.choice([move for str_move, (v, move) in visits.items() if v == v_max])
 
 
-if __name__ == '__main__':
-    # from src.state_pyx.state import State
-    # base_agent_ = RandomAgent()
-    # agent_ = KPlyAgent(agent=base_agent_, k=2)
-    # s_ = State()
-    # info = agent_.ply(s_)
-    # print(info)
-    import os
-    from src.models import ModelTD
-    from src.environment import Environment
-    sess = tf.Session()
-    model = ModelTD(sess=sess, config=None)
-    model.restore("/tmp/backgammon_agent")
-    export_dir = "/tmp/backgammon_agent_saved_model"
-    os.system(f'rm -r {export_dir}')
-    model.export_inference_graph(export_dir)
-    agent_1 = TDAgent(sign=1, model=model)
-    agent_2 = TDAgentSavedModel(sign=-1, export_dir=export_dir)
-    agent_2 = KPlyAgent(sign=-1, k=2, agent=agent_2)
-    env = Environment(agents=[agent_1, agent_2], verbose=False)
-    res = env.contest(num_episodes=100)
-    print(res)
+# if __name__ == '__main__':
+#     # from src.state_pyx.state import State
+#     # base_agent_ = RandomAgent()
+#     # agent_ = KPlyAgent(agent=base_agent_, k=2)
+#     # s_ = State()
+#     # info = agent_.ply(s_)
+#     # print(info)
+#     import os
+#     from src.models import ModelTD
+#     from src.environment import Environment
+#     sess = tf.Session()
+#     model = ModelTD(sess=sess, config=None)
+#     model.restore("/tmp/backgammon_agent")
+#     export_dir = "/tmp/backgammon_agent_saved_model"
+#     os.system(f'rm -r {export_dir}')
+#     model.export_inference_graph(export_dir)
+#     agent_1 = TDAgent(sign=1, model=model)
+#     agent_2 = TDAgentSavedModel(sign=-1, export_dir=export_dir)
+#     agent_2 = KPlyAgent(sign=-1, k=2, agent=agent_2)
+#     env = Environment(agents=[agent_1, agent_2], verbose=False)
+#     res = env.contest(num_episodes=100)
+#     print(res)

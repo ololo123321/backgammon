@@ -107,6 +107,7 @@ class GameTreeNode:
         p = sum(node.p for node in nodes)
         assert round(p, 6) == 1.0, f"p actual: {p}, num nodes: {len(nodes)}, is terminal: {self.state.is_game_over}"
         r = sum(node.r * node.p for node in nodes)
+        assert 0 <= r <= 1.0, r
         return r
 
     def expand(self):
@@ -126,7 +127,7 @@ class GameTreeNode:
             board2prob[b] += p
         for b, (s, r) in board2info.items():
             p = board2prob[b] * self.p
-            child = GameTreeNode(sign=self.sign * -1, state=s.copy, agent=self.agent, r=r, p=p, k=self.k)
+            child = GameTreeNode(sign=self.sign * -1, state=s.reversed, agent=self.agent, r=r, p=p, k=self.k)
             self.children.append(child)
 
     @staticmethod
