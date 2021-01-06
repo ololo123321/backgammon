@@ -22,7 +22,7 @@ class Environment:
     def play(self, verbose=False):
         i = random.randint(0, 1)
         # step = 0
-        while not self.state.is_game_over:
+        while not self.state.is_terminal:
             agent = self.agents[i]
             self.state.sign = agent.sign
             if verbose:
