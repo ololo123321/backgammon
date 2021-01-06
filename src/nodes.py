@@ -104,10 +104,11 @@ class GameTreeNode:
                 node.expand()
                 leaves_level += node.children
             nodes = leaves_level
-        p = sum(node.p for node in nodes)
-        assert round(p, 6) == 1.0, f"p actual: {p}, num nodes: {len(nodes)}, is terminal: {self.state.is_game_over}"
-        r = sum(node.r * node.p for node in nodes)
-        assert 0 <= r <= 1.0, r
+        # если дерево скошенное, то сумма может отличаться от единицы
+        # p = sum(node.p for node in nodes)
+        # assert round(p, 6) == 1.0, f"p actual: {p}, num nodes: {len(nodes)}, is terminal: {self.state.is_game_over}"
+        # r = sum(node.r * node.p for node in nodes)
+        # assert 0 <= r <= 1.0, r
         return r
 
     def expand(self):
