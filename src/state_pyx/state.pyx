@@ -131,13 +131,13 @@ cdef class Node:
     cdef public Board board
     cdef public int depth
     cdef public tuple roll
-    cdef public bint is_game_over
+    cdef public bint is_terminal
 
-    def __init__(self, board, depth, roll, is_game_over):
+    def __init__(self, board, depth, roll, is_terminal):
         self.board = board
         self.depth = depth
         self.roll = roll
-        self.is_game_over = is_game_over
+        self.is_terminal = is_terminal
 
 
 cdef dict add_leaf(Node node, dict leaves):
@@ -171,14 +171,14 @@ cdef dict extend(Node node, int max_depth, dict leaves, bint is_double):
         # если можно съеденную фигурку поставить на доску:
         if board_copy.board[home_position] >= -1:
             board_copy.add_piece(home_position)
-            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+            child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=False)
             extend(node=child, max_depth=max_depth, leaves=leaves, is_double=is_double)
         else:
             # если дубль, то мы уже не можем сделать ход
             if is_double:
                 leaves = add_leaf(node=node, leaves=leaves)
             else:
-                child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=False)
                 extend(node=child, max_depth=max_depth, leaves=leaves, is_double=is_double)
     else:
         # пытаемся сделать ход с каждой башни
@@ -207,10 +207,10 @@ cdef dict extend(Node node, int max_depth, dict leaves, bint is_double):
 
                 if board_copy.is_empty:
                     # пустая доска ~ текущий игрок победил
-                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=True)
+                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=True)
                     leaves = add_leaf(node=child, leaves=leaves)
                 else:
-                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_game_over=False)
+                    child = Node(board=board_copy, depth=node.depth + 1, roll=node.roll, is_terminal=False)
                     extend(node=child, max_depth=max_depth, leaves=leaves, is_double=is_double)
         # нельзя сделать ни одного хода
         if is_leaf:
@@ -261,10 +261,10 @@ cdef class State:
         max_depth = len(self.roll)
         is_double = max_depth == 4
 
-        root = Node(board=self.board, depth=0, roll=self.roll, is_game_over=False)
+        root = Node(board=self.board, depth=0, roll=self.roll, is_terminal=False)
         leaves = extend(node=root, max_depth=max_depth, leaves=leaves, is_double=is_double)
         if len(self.roll) == 2:
-            root = Node(board=self.board, depth=0, roll=self.roll[::-1], is_game_over=False)
+            root = Node(board=self.board, depth=0, roll=self.roll[::-1], is_terminal=False)
             leaves = extend(node=root, max_depth=max_depth, leaves=leaves, is_double=is_double)
 
         # гарантируется непустота leaves
@@ -273,7 +273,7 @@ cdef class State:
         res = []
         roll_next = roll_dice()
         for node in leaves.values():
-            if node.is_game_over:
+            if node.is_terminal:
                 s = State(board=node.board, roll=roll_next, winner=self.sign, sign=self.sign)
                 res.append(s)
             elif node.depth == max_depth:
@@ -316,7 +316,7 @@ cdef class State:
         return State(board=self.board.reversed, roll=self.roll, winner=self.winner, sign=self.sign * -1)
 
     @property
-    def is_game_over(self):
+    def is_terminal(self):
         return self.winner != 0
 
     @property
