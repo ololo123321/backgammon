@@ -5,9 +5,9 @@ from .state_pyx.state import State
 
 
 class Environment:
-    def __init__(self, agents=None):
+    def __init__(self, agents=None, state=None):
         self.agents = agents
-        self.state = State()
+        self.state = state if state is not None else State()
 
     def contest(self, num_episodes=100, verbose=False, print_fn=None):
         print_fn = print_fn if print_fn is not None else print

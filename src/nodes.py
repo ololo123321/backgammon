@@ -1,80 +1,72 @@
 import random
 from collections import defaultdict
 from .state_pyx.state import State
-from .utils import extract_features, get_reward
 
 
 class MCNode:
     def __init__(
             self,
             sign: int = 1,
-            move=None,
             parent=None,
             state: State = None,
-            weights=None,
+            r: float = 0.5,
             c: float = 1.0,
             p: float = 1.0
     ):
         self.sign = sign
-        self.move = move
         self.parent = parent
         self.state = state
-        self.sign = self.sign  # нужно для корректной работы extract_features
-        self.weights = weights
-        self.c = c
-        self.p = p
+        self.state.sign = self.sign  # нужно для корректной работы extract_features
 
-        self.children = []
+        self.r = r  # reward
+        self.c = c  # exploration parameter
+        self.p = p  #
+
         self.wins = 0
         self.visits = 0
+
+        self.children = set()
+
         self.untried_moves = self.state.transitions
 
-    def ucb(self, child):
+    @property
+    def ucb(self) -> float:
         """
         http://web.stanford.edu/%7Esurag/posts/alphazero.html - отсюда взята формула
         """
-        x = extract_features(child.state)
-        r = get_reward(x, self.weights)
-        r = r if self.sign == 1 else 1 - r
-        return child.wins / child.visits + self.c * r * self.visits ** 0.5 / child.visits
+        return self.wins / self.visits + self.c * self.r * self.visits ** 0.5 / self.visits
 
     @property
     def best_child(self):
-        return max(self.children, key=lambda child: self.ucb(child))
+        return max(self.children, key=lambda child: child.ucb)
 
-    def add_child(self, move, state):
-        child = MCNode(sign=self.sign, move=move, parent=self, state=state)
-        self.untried_moves.remove(move)
-        self.children.append(child)
-        return child
-
-    def update(self, result):
-        self.visits += 1
-        self.wins += result
-
-    def fully_expanded(self):
+    @property
+    def is_fully_expanded(self) -> bool:
         """
         Попробованы все доступные действия
         p - вероятность того, что в течение одной симуляции
-        выбор будет сделан из всех возможных ходов на этапе selection
+        выбор будет сделан из всех возможных ходов на этапе select
         """
-        if not self.untried_moves:
+        if len(self.untried_moves) == 0:
             return True
-        elif random.random() < 1 - self.p:
+        elif random.random() < 1.0 - self.p:
             return True
-        return False
+        else:
+            return False
 
-    def terminal(self):
+    @property
+    def is_terminal(self) -> bool:
         """
         Лист игрового дерева
         """
-        return not self.children
+        return len(self.children) == 0
 
-    def get_moves(self):
-        """
-        Чтоб instance этого класса можно было сувать в choose_move
-        """
-        return self.untried_moves
+    def add_child(self, child):
+        self.children.add(child)
+
+    def update(self, result: int):
+        self.visits += 1
+        self.wins += result
 
 
 class GameTreeNode:
@@ -139,3 +131,13 @@ class GameTreeNode:
                     yield (i,) * 4
                 else:
                     yield i, j
+
+
+class GameTreeNodeFused(GameTreeNode):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    def expected_reward(self) -> float:
+        # TODO: сделать так, чтобы модель дёргалась один раз для num_rolls x num_transitions состояний
+        return 0.5

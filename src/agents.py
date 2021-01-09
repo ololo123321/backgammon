@@ -1,15 +1,15 @@
 import random
 from typing import List
-from multiprocessing import Pool
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from copy import deepcopy
 
 import tensorflow as tf
 import numpy as np
 
 from src.state_pyx.state import Board, State
-from src.utils import choose_move_trained
 from src.nodes import MCNode, GameTreeNode
+from src.environment import Environment
 
 
 TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
@@ -231,76 +231,99 @@ class KPlyAgent(BaseAgent):
         return TransitionInfo(state=transitions[i], reward=r_best)
 
 
-class MCAgentBase(BaseAgent):
+class MCAgent(BaseAgent):
     """
     Агент строит одно MC-дерево
     """
-    def __init__(self, sign=1, weights=None, n_simulations=100, c=1.0, p=1.0):
+    def __init__(self, sign=1, agent=None, num_simulations=100, c=1.0, p=1.0):
         super().__init__(sign=sign)
-        self.weights = weights
-        self.n_simulations = n_simulations
+        self.agent = agent
+        self.num_simulations = num_simulations
         self.c = c
         self.p = p
 
-    def ply(self, state: State) -> TransitionInfo:
-        pass
-
-    def mcts(self, rootstate):
-        rootnode = MCNode(sign=self.sign, state=rootstate, weights=self.weights, c=self.c, p=self.p)
-        for i in range(self.n_simulations):
-            node = rootnode
-            state = rootstate.clone()
-
-            while node.fully_expanded() and not node.terminal():
-                node = node.best_child
-                state.update(node.move)
-
-            if not node.fully_expanded():
-                move = choose_move_trained(node.state, self.weights)
-                state.update(move)
-                node = node.add_child(move, state)
-
-            while not state.winner:
-                # move = choose_move_trained(state, self.weights)
-                move = random.choice(state.get_moves())  # так сильно быстрее, но хуже
-                state.update(move)
-
-            while node:
-                node.update(result=int(state.winner == rootstate.sign))
-                node = node.parent
-        return rootnode.children
-
-    def choose_move(self, state):
-        children = self.mcts(state)
-        v_max = max([c.visits for c in children])
-        return random.choice([c.move for c in children if c.visits == v_max])
-
-
-class MCAgent(BaseAgent):
-    """
-    Агент строит несколько MC-деревьев, посещения детей корня суммируются
-    """
-    def __init__(self, sign=1, weights=None, n_simulations=100, c=1.0, n_trees=10, p=1.0):
-        super().__init__(sign)
-        self.weights = weights
-        self.n_simulations = n_simulations
-        self.c = c
-        self.n_trees = n_trees
-        self.p = p
+        self._opponent = deepcopy(agent)
+        self._opponent.sign = sign * -1
 
     def ply(self, state: State) -> TransitionInfo:
-        agent = MCAgentBase(weights=self.weights, n_simulations=self.n_simulations, c=self.c, p=self.p)
-        with Pool() as pool:
-            res = pool.map(agent.mcts, [state] * self.n_trees)
+        root = self._monte_carlo_tree_search(state)
+        v = max(child.visits for child in root.children)
+        s = random.choice([child.state for child in root.children if child.visits == v])
+        return TransitionInfo(state=s, reward=v)
 
-        visits = {}
-        for children in res:
-            visits = {str(c.move): (visits.get(str(c.move), (0, None))[0] + c.visits, c.move) for c in children}
+    def _monte_carlo_tree_search(self, state: State) -> MCNode:
+        # TODO: reward
+        root = MCNode(sign=self.sign, parent=None, state=state, r=0.5, c=self.c, p=self.p)
+        for _ in range(self.num_simulations):
+            node = self._select(root)
+            node = self._expand(node)
+            result = self._simulate(node)
+            self._back_propagate(node=node, result=result)
+        return root
 
-        for k, (v, m) in visits.items():
-            print(f'move: {k}, visits: {v}')
-        v_max = max([v for v, m in visits.values()])
-        return random.choice([move for str_move, (v, move) in visits.items() if v == v_max])
+    @staticmethod
+    def _select(node: MCNode) -> MCNode:
+        """
+        выбрать лучший узел игрового дерева такой, из которого попробованы не все действия
+        """
+        while node.is_fully_expanded and not node.is_terminal:
+            node = node.best_child
+        return node
+
+    def _expand(self, node: MCNode) -> MCNode:
+        """
+        попробовать новое действие
+        """
+        # TODO: одним вызовом модели получать награды для всех доступных состояний из данного.
+        s, r = self.agent.ply(node.state)
+        child = MCNode(sign=node.sign * -1, parent=node, state=s, r=r, c=self.c, p=self.p)
+        node.add_child(child)
+        return child
+
+    def _simulate(self, node: MCNode) -> int:
+        """
+        доиграть игру из выбранного состояния
+        """
+        env = Environment(agents=[self.agent, self._opponent], state=node.state)
+        winner = env.play(verbose=False)
+        result = int(winner == self.sign)
+        return result
+
+    @staticmethod
+    def _back_propagate(node: MCNode, result: int):
+        """
+        обновыть скоры всех узлов на пути к результату
+        """
+        while node is not None:
+            node.update(result=result)
+            node = node.parent
+
+
+# class MCAgentParallel(BaseAgent):
+#     """
+#     Агент строит несколько MC-деревьев, посещения детей корня суммируются
+#     """
+#     def __init__(self, sign=1, weights=None, n_simulations=100, c=1.0, n_trees=10, p=1.0):
+#         super().__init__(sign)
+#         self.weights = weights
+#         self.n_simulations = n_simulations
+#         self.c = c
+#         self.n_trees = n_trees
+#         self.p = p
+#
+#     def ply(self, state: State) -> TransitionInfo:
+#         agent = MCAgent(weights=self.weights, n_simulations=self.n_simulations, c=self.c, p=self.p)
+#         with Pool() as pool:
+#             res = pool.map(agent.mcts, [state] * self.n_trees)
+#
+#         visits = {}
+#         for children in res:
+#             visits = {str(c.move): (visits.get(str(c.move), (0, None))[0] + c.visits, c.move) for c in children}
+#
+#         for k, (v, m) in visits.items():
+#             print(f'move: {k}, visits: {v}')
+#         v_max = max([v for v, m in visits.values()])
+#         return random.choice([move for str_move, (v, move) in visits.items() if v == v_max])
 
 
 # if __name__ == '__main__':
