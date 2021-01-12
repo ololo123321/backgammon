@@ -9,7 +9,7 @@ import numpy as np
 
 from src.state_pyx.state import Board, State
 from src.nodes import MCNode, GameTreeNode
-# from src.environment import Environment
+from src.environment import Environment
 
 
 TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
@@ -243,13 +243,7 @@ class KPlyAgentFused(KPlyAgent):
         rolls = list(self._rolls_gen())
         num_rolls = len(rolls)
 
-        class Node:
-            def __init__(self, state=None, id_action=None, reward=None, prob=None):
-                self.state = state
-                self.id_action = id_action
-                self.reward = reward
-                self.prob = prob
-
+        Node = namedtuple("Node", ["state", "id_action", "reward", "prob"])
         leaves = [Node(state=s, id_action=i, reward=0.0, prob=1.0) for i, s in enumerate(transitions_root)]
 
         for _ in range(self.k):
@@ -267,7 +261,7 @@ class KPlyAgentFused(KPlyAgent):
                     candidates_leaf_roll = []
                     for t in transitions_roll:
                         board2prob[t.board.fingerprint] += p
-                        candidate = Node(state=t, id_action=leaf.id_action, prob=leaf.prob)
+                        candidate = Node(state=t, id_action=leaf.id_action, reward=None, prob=leaf.prob)
                         candidates_leaf_roll.append(candidate)
                     transitions_leaf.append(candidates_leaf_roll)
 
@@ -422,25 +416,25 @@ class MCAgent(BaseAgent):
 #         return random.choice([move for str_move, (v, move) in visits.items() if v == v_max])
 
 
-if __name__ == '__main__':
-    # from src.state_pyx.state import State
-    # base_agent_ = RandomAgent()
-    # agent_ = KPlyAgent(agent=base_agent_, k=2)
-    # s_ = State()
-    # info = agent_.ply(s_)
-    # print(info)
-    import os
-    from src.models import ModelTD
-    from src.environment import Environment
-    sess = tf.Session()
-    model = ModelTD(sess=sess, config=None)
-    model.restore("/tmp/backgammon_agent")
-    export_dir = "/tmp/backgammon_agent_saved_model"
-    os.system(f'rm -r {export_dir}')
-    model.export_inference_graph(export_dir)
-    agent_1 = TDAgent.from_saved_model(sign=1, export_dir=export_dir)
-    agent_2 = TDAgent.from_saved_model(sign=-1, export_dir=export_dir)
-    agent_2 = KPlyAgentFused(sign=-1, k=1, agent=agent_2)
-    env = Environment(agents=[agent_1, agent_2])
-    res = env.contest(num_episodes=10, verbose=True)
-    print(res)
+# if __name__ == '__main__':
+#     # from src.state_pyx.state import State
+#     # base_agent_ = RandomAgent()
+#     # agent_ = KPlyAgent(agent=base_agent_, k=2)
+#     # s_ = State()
+#     # info = agent_.ply(s_)
+#     # print(info)
+#     import os
+#     from src.models import ModelTD
+#     from src.environment import Environment
+#     sess = tf.Session()
+#     model = ModelTD(sess=sess, config=None)
+#     model.restore("/tmp/backgammon_agent")
+#     export_dir = "/tmp/backgammon_agent_saved_model"
+#     os.system(f'rm -r {export_dir}')
+#     model.export_inference_graph(export_dir)
+#     agent_1 = TDAgent.from_saved_model(sign=1, export_dir=export_dir)
+#     agent_2 = TDAgent.from_saved_model(sign=-1, export_dir=export_dir)
+#     agent_2 = KPlyAgentFused(sign=-1, k=1, agent=agent_2)
+#     env = Environment(agents=[agent_1, agent_2])
+#     res = env.contest(num_episodes=10, verbose=True)
+#     print(res)

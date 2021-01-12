@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 import tensorflow as tf
 
-# from src.state import State
 from src.state_pyx.state import State
 from src.environment import Environment
 from src.agents import HumanAgent, RandomAgent, TDAgent
