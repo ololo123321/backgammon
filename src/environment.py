@@ -10,6 +10,14 @@ class Environment:
         self.state = state if state is not None else State()
 
     def contest(self, num_episodes=100, verbose=False, print_fn=None):
+        """
+        Туринр двух агентов.
+        :param num_episodes: число игр
+        :param verbose: писать ли промежуточный результат
+        :param print_fn: callable: str -> stdout. сделано так, чтоб сообщения можно было выводить как в консоль,
+        так и в файл (нужно при обучении)
+        :return:
+        """
         print_fn = print_fn if print_fn is not None else print
         res = {-1: 0, 1: 0}
         for i in trange(num_episodes):

@@ -131,13 +131,3 @@ class GameTreeNode:
                     yield (i,) * 4
                 else:
                     yield i, j
-
-
-class GameTreeNodeFused(GameTreeNode):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def expected_reward(self) -> float:
-        # TODO: сделать так, чтобы модель дёргалась один раз для num_rolls x num_transitions состояний
-        return 0.5

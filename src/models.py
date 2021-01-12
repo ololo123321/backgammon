@@ -102,7 +102,7 @@ class BaseModel(ABC, LoggerMixin):
             x = state.features
             step = 0
             t0 = time.time()
-            while not state.is_game_over:
+            while not state.is_terminal:
                 # 1. Выбрать лучшее состояние из возможных
                 assert state.sign == agent.sign
                 # print('=' * 10, f"step {step} starts", '=' * 10)
