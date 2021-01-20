@@ -232,9 +232,11 @@ class KPlyAgent(BaseAgent):
 
 
 class KPlyAgentFused(KPlyAgent):
-    def __init__(self, sign=1, k=1, agent=None):
+    def __init__(self, sign=1, k=1, agent=None, batch_size=65536):
         super().__init__(sign=sign, k=k, agent=agent)
+        self.batch_size = batch_size
 
+    # TODO: мат. ожиданиия наград немного отличаются от тех, что получаются с помощью KPlyAgent.ply
     def ply(self, state: State) -> TransitionInfo:
         if self.k == 0:
             return self.agent.ply(state)
@@ -242,71 +244,157 @@ class KPlyAgentFused(KPlyAgent):
         transitions_root = state.transitions
         rolls = list(self._rolls_gen())
         num_rolls = len(rolls)
+        max_transitions = 500
 
-        Node = namedtuple("Node", ["state", "id_action", "reward", "prob"])
-        leaves = [Node(state=s, id_action=i, reward=0.0, prob=1.0) for i, s in enumerate(transitions_root)]
+        # Node = namedtuple("Node", ["state", "id_action", "reward", "prob"])
+        class Node:
+            def __init__(self, id, id_action, state, reward, prob_path, prob_roll):
+                self.id = id
+                self.id_action = id_action
+                self.state = state
+                self.reward = reward
+                self.prob_path = prob_path
+                self.prob_roll = prob_roll
 
-        for _ in range(self.k):
-            print(_)
+        leaves = [
+            Node(id=i, id_action=i, state=s.reversed, reward=0.0, prob_path=1.0, prob_roll=None)
+            for i, s in enumerate(transitions_root)
+        ]
+        sign = self.sign * -1
+        board2features = {}  # мемоизация фичей
+        for depth in range(self.k):
+            # t0 = time()
             num_leaves = len(leaves)
-
-            board2prob = defaultdict(float)
-            transitions_leaf = []
-            for leaf in leaves:
-                for roll in rolls:
+            # TODO: мб вернуться к списку с последующим решейпом, чтоб не аллоцировать большой тензор
+            candidates = np.empty((num_leaves, num_rolls, max_transitions), dtype='O')
+            mask = np.zeros_like(candidates, dtype=np.int32)
+            m = -1
+            # TODO: распараллелить рассчёт фичей, ибо это узкое место
+            for i, leaf in enumerate(leaves):
+                for j, roll in enumerate(rolls):
                     state = leaf.state.copy
                     state.roll = roll
                     transitions_roll = state.transitions
                     p = 2 / 36 if len(roll) == 2 else 1 / 36
-                    candidates_leaf_roll = []
-                    for t in transitions_roll:
-                        board2prob[t.board.fingerprint] += p
-                        candidate = Node(state=t, id_action=leaf.id_action, reward=None, prob=leaf.prob)
-                        candidates_leaf_roll.append(candidate)
-                    transitions_leaf.append(candidates_leaf_roll)
+                    m = max(m, len(transitions_roll))
+                    for k, t in enumerate(transitions_roll):
+                        candidates[i, j, k] = Node(
+                            id=leaf.id,
+                            id_action=leaf.id_action,
+                            state=t,
+                            reward=None,
+                            prob_path=leaf.prob_path,
+                            prob_roll=p
+                        )
+                        mask[i, j, k] = 1
 
-            m = max(map(len, transitions_leaf))
-            # N = num_leaves * num_rolls * max_num_transitions
-            candidates = []  # [N]
-            mask = []
-            for x in transitions_leaf:
-                for candidate in x:
-                    candidates.append(candidate)
-                    mask.append(1)
-                for _ in range(m - len(x)):
-                    candidates.append(candidates[-1])
-                    mask.append(0)
-            mask = np.array(mask)
+                        # мемоизация фичей
+                        b = t.board.fingerprint
+                        if b not in board2features:
+                            board2features[b] = t.features
 
-            if isinstance(self.agent, TDAgent):
-                features = [c.state.features for c in candidates]
-                x = np.concatenate(features, axis=0)  # [N, num_features]
-                rewards = self.agent.model.get_output(x)  # [N, 1]
+            # print("m:", m)
+            candidates = candidates[..., :m]
+            mask = mask[..., :m]
+
+            # assert len(candidates) == num_leaves * num_rolls * m
+
+            # print(f"depth: {depth}, num leaves: {num_leaves}, max num transitions: {m}, "
+            #       f"num candidates: {len(candidates)}, time elapsed: {time() - t0}")
+
+            candidates_flat = candidates.flatten()
+            num_features = candidates_flat[0].state.features_dim  # TODO: костыль
+            if hasattr(self.agent, "model"):
+                rewards = []
+                for start in range(0, len(candidates_flat), self.batch_size):
+                    # print(start)
+                    end = start + self.batch_size
+                    # t0 = time()
+                    # features = [c.state.features for c in candidates[start:end]]
+                    # features = [board2features[c.state.board.fingerprint] for c in candidates_flat[start:end]]
+                    # x = np.concatenate(features, axis=0)  # [N, num_features]
+                    candidates_batch = candidates_flat[start:end]
+                    x = np.zeros((len(candidates_batch), num_features), dtype=np.float32)
+                    for i, c in enumerate(candidates_batch):
+                        if c is not None:
+                            x[i] = board2features[c.state.board.fingerprint]
+
+                    # print(f"features computed, time elapsed: {time() - t0}")
+                    # t0 = time()
+                    rewards_i = self.agent.model.get_output(x)  # [N, 1]
+                    # print("predictions computed, time elapsed:", time() - t0)
+                    rewards.append(rewards_i)
+                rewards = np.concatenate(rewards, axis=0)
+                if sign == -1:
+                    rewards = 1.0 - rewards
             else:
                 rewards = np.full(shape=(len(candidates),), fill_value=0.5)
+
+            mask_flat = mask.flatten()  # [N]
             rewards = rewards.flatten()  # [N]
-            rewards *= mask  # [N]
+            rewards *= mask_flat  # [N]
             shape = num_leaves, num_rolls, m
             rewards = rewards.reshape(shape)  # [num_leaves, num_rolls, max_num_transitions]
             zz = rewards.argmax(-1)  # [num_leaves, num_rolls]
 
             candidates = np.array(candidates).reshape(shape)
-            leaves_new = []
+            # leaves_new = []
+            leaves_new = {}
+            # num_collapses = 0
+            id_leaf_new = 0
             for i, j in np.ndindex(num_leaves, num_rolls):  # удобный аналог вложенным циклам
                 k = zz[i, j]
-                x = candidates[i, j, k]
-                r = rewards[i, j, k]
-                p = x.prob * board2prob[x.state.board.fingerprint]
-                leaf = Node(state=x.state.reversed, id_action=x.id_action, reward=r, prob=p)
-                leaves_new.append(leaf)
+                leaf = candidates[i, j, k]
 
-            leaves = leaves_new
+                # гарантируется уникальность досок в разрезе leaf.id
+                leaf_fingerprint = leaf.id, leaf.state.board.fingerprint
+
+                # две комбинации кубиков привели к одному состоянию
+                if leaf_fingerprint in leaves_new:
+                    # num_collapses += 1
+                    # раскрытие скобок в выражении prob_path * (p_roll_1 + ... + p_roll_k)
+                    leaves_new[leaf_fingerprint].prob_path += leaf.prob_path * leaf.prob_roll
+                else:
+                    r = rewards[i, j, k]
+                    leaf = Node(
+                        id=id_leaf_new,
+                        id_action=leaf.id_action,
+                        state=leaf.state.reversed,
+                        reward=r,
+                        prob_path=leaf.prob_path * leaf.prob_roll,
+                        prob_roll=None
+                    )
+                    leaves_new[leaf_fingerprint] = leaf
+                    id_leaf_new += 1
+
+            # print("num collapses:", num_collapses)
+
+            leaves = list(leaves_new.values())
+
+            # обновление знака (для корректного рассчёта награды)
+            sign *= -1
 
         d = defaultdict(float)
+        # action2prob = defaultdict(float)
+        # action2count = defaultdict(int)
         for leaf in leaves:
-            d[leaf.id_action] += leaf.reward * leaf.prob
+            d[leaf.id_action] += leaf.reward * leaf.prob_path
+            # action2prob[leaf.id_action] += leaf.prob_path
+            # action2count[leaf.id_action] += 1
 
-        i = max(d, key=d.get)
+        # assert max(action2count.values()) <= 21, max(action2count.values())
+
+        # print(action2count)
+        # print("prob:")
+        # print(action2prob)
+        # print("E[r]:")
+        # print(d)
+
+        if self.k % 2 == 0:
+            i = max(d, key=d.get)
+        else:
+            i = min(d, key=d.get)
+
         return TransitionInfo(state=transitions_root[i], reward=d[i])
 
     @staticmethod
