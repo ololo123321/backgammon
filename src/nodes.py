@@ -1,6 +1,7 @@
 import random
 from collections import defaultdict
 from .state_pyx.state import State
+from .utils import rolls_gen
 
 
 class MCNode:
@@ -9,7 +10,7 @@ class MCNode:
             sign: int = 1,
             parent=None,
             state: State = None,
-            r: float = 0.5,
+            r: float = None,
             c: float = 1.0,
             p: float = 1.0
     ):
@@ -110,7 +111,7 @@ class GameTreeNode:
         # нарпимер, если выпадет (1,1) и (1,3), то можно походить одной фигурой 4 раза.
         board2prob = defaultdict(float)
         board2info = {}
-        for roll in self._rolls_gen():
+        for roll in rolls_gen():
             state = self.state.copy
             state.roll = roll
             s, r = self.agent.ply(state)
@@ -122,12 +123,3 @@ class GameTreeNode:
             p = board2prob[b] * self.p
             child = GameTreeNode(sign=self.sign * -1, state=s.reversed, agent=self.agent, r=r, p=p, k=self.k)
             self.children.append(child)
-
-    @staticmethod
-    def _rolls_gen():
-        for i in range(1, 7):
-            for j in range(i, 7):
-                if i == j:
-                    yield (i,) * 4
-                else:
-                    yield i, j

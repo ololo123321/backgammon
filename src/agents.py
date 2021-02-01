@@ -10,6 +10,7 @@ import numpy as np
 from src.state_pyx.state import Board, State
 from src.nodes import MCNode, GameTreeNode
 from src.environment import Environment
+from src.utils import rolls_gen
 
 
 TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
@@ -242,7 +243,7 @@ class KPlyAgentFused(KPlyAgent):
             return self.agent.ply(state)
 
         transitions_root = state.transitions
-        rolls = list(self._rolls_gen())
+        rolls = list(rolls_gen())
         num_rolls = len(rolls)
         max_transitions = 500
 
@@ -397,15 +398,6 @@ class KPlyAgentFused(KPlyAgent):
 
         return TransitionInfo(state=transitions_root[i], reward=d[i])
 
-    @staticmethod
-    def _rolls_gen():  # TODO: копипаста из GameTreeNode!
-        for i in range(1, 7):
-            for j in range(i, 7):
-                if i == j:
-                    yield (i,) * 4
-                else:
-                    yield i, j
-
 
 class MCAgent(BaseAgent):
     """
@@ -416,6 +408,9 @@ class MCAgent(BaseAgent):
         self.agent = agent
         self.num_simulations = num_simulations
         self.c = c
+
+        # TODO: учесть тот факт, что если это значение не равно 1.0,
+        # то из корня могут быть проверены не все варианты пи малом числе итераций
         self.p = p
 
         self._opponent = deepcopy(agent)
@@ -430,7 +425,7 @@ class MCAgent(BaseAgent):
     def _monte_carlo_tree_search(self, state: State) -> MCNode:
         # TODO: reward
         # TODO: при построении игрового дерева учитывать разные комбинации кубиков
-        root = MCNode(sign=self.sign, parent=None, state=state, r=0.5, c=self.c, p=self.p)
+        root = MCNode(sign=self.sign, parent=None, state=state, r=None, c=self.c, p=self.p)
         for _ in range(self.num_simulations):
             node = self._select(root)
             node = self._expand(node)
