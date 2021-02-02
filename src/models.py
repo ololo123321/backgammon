@@ -107,7 +107,8 @@ class BaseModel(ABC, LoggerMixin):
                 # print('=' * 10, f"step {step} starts", '=' * 10)
                 # print("current agent:", agent.sign)
                 # print("current state:", state)
-                state, _ = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
+                info = agent.ply(state)  # выбрали наилучшее следующее состояние от лица текущего игрока
+                state = info.state
                 # print("chosen state:", state)
 
                 # 2. Развернуть состояние к противнику
@@ -154,10 +155,10 @@ class BaseModel(ABC, LoggerMixin):
         summary_writer.close()
         self.test(n_episodes=1000)
 
-    def test(self, n_episodes=100):
+    def test(self, n_episodes=100, verbose: bool = True):
         agents = [TDAgent(sign=-1, model=self), RandomAgent(sign=1)]
         env = Environment(agents)
-        env.contest(num_episodes=n_episodes, verbose=False, print_fn=self.logger.debug)
+        env.contest(num_episodes=n_episodes, verbose=verbose, print_fn=self.logger.debug)
 
     def play(self):
         agents = [TDAgent(sign=-1, model=self), HumanAgent(sign=1)]

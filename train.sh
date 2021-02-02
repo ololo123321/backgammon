@@ -4,7 +4,7 @@ model_dir="/tmp/backgammon_agent"
 
 rm -r ${model_dir}
 
-python main.py \
+python train.py \
     --model_dir=${model_dir} \
     --encoder=TesauroEncoder \
     --enc_params='{"hidden_dim": 80}' \
