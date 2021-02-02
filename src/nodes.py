@@ -129,12 +129,19 @@ class GameTreeNode:
         for roll in rolls_gen():
             state = self.state.copy
             state.roll = roll
-            s, r = self.agent.ply(state)
+            info = self.agent.ply(state)
             p = 2 / 36 if len(roll) == 2 else 1 / 36
-            b = s.board.fingerprint
-            board2info[b] = s, r
+            b = info.state.board.fingerprint
+            board2info[b] = info
             board2prob[b] += p
-        for b, (s, r) in board2info.items():
+        for b, info in board2info.items():
             p = board2prob[b] * self.p
-            child = GameTreeNode(sign=self.sign * -1, state=s.reversed, agent=self.agent, r=r, p=p, k=self.k)
+            child = GameTreeNode(
+                sign=self.sign * -1,
+                state=info.state.reversed,
+                agent=self.agent,
+                r=info.reward,
+                p=p,
+                k=self.k
+            )
             self.children.append(child)
