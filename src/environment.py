@@ -25,6 +25,7 @@ class Environment:
             res[winner] += 1
             if verbose:
                 print_fn(f"[episode {i + 1} / {num_episodes}] result: {res}")
+        print_fn(f"contest finished with following result: {res}")
         return res
 
     def play(self, verbose=False):

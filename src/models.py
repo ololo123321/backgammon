@@ -155,7 +155,7 @@ class BaseModel(ABC, LoggerMixin):
         summary_writer.close()
         self.test(n_episodes=1000)
 
-    def test(self, n_episodes=100, verbose: bool = True):
+    def test(self, n_episodes=100, verbose: bool = False):
         agents = [TDAgent(sign=-1, model=self), RandomAgent(sign=1)]
         env = Environment(agents)
         env.contest(num_episodes=n_episodes, verbose=verbose, print_fn=self.logger.debug)
