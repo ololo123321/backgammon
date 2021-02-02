@@ -2,6 +2,7 @@ import random
 from typing import List
 from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
+from tqdm import tqdm
 
 import tensorflow as tf
 import numpy as np
@@ -458,7 +459,7 @@ class MCAgent(BaseAgent):
             p=self.p,
             untried_moves=info.all_possible_rewards
         )
-        for _ in range(self.num_simulations):
+        for _ in tqdm(range(self.num_simulations)):
             node = self._select(root)
             node = self._expand(node)
             result = self._simulate(node)
@@ -483,8 +484,18 @@ class MCAgent(BaseAgent):
         """
         best_untried_state, r = max(node.untried_moves.items(), key=lambda x: x[1])
         # TODO: нужно ли делать 1 - r?
-        child = MCNode(sign=node.sign * -1, parent=node, state=best_untried_state.reversed, r=r, c=self.c, p=self.p)
+        info = self._opponent.ply(best_untried_state.reversed)
+        child = MCNode(
+            sign=self._opponent.sign,
+            parent=node,
+            state=best_untried_state.reversed,
+            r=r,
+            c=self.c,
+            p=self.p,
+            untried_moves=info.all_possible_rewards
+        )
         node.add_child(child)
+        del node.untried_moves[best_untried_state]
         return child
 
     def _simulate(self, node: MCNode) -> int:

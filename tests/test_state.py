@@ -4,6 +4,7 @@ from collections import namedtuple
 
 from src.state import roll_dice, Board, State
 from src.state_pyx.state import State as StateFast
+from src.utils import rolls_gen
 
 
 def test_roll_dice():
@@ -201,16 +202,34 @@ def test_state_moves(board, roll, expected):
 
 
 def _test_state_performance(state_cls):
+    d = {
+        (1, 1, 1, 1): 42,
+        (1, 2): 15,
+        (1, 3): 16,
+        (1, 4): 14,
+        (1, 5): 8,
+        (1, 6): 10,
+        (2, 2, 2, 2): 75,
+        (2, 3): 17,
+        (2, 4): 18,
+        (2, 5): 8,
+        (2, 6): 14,
+        (3, 3, 3, 3): 73,
+        (3, 4): 17,
+        (3, 5): 9,
+        (3, 6): 14,
+        (4, 4, 4, 4): 52,
+        (4, 5): 9,
+        (4, 6): 14,
+        (5, 5, 5, 5): 4,
+        (5, 6): 7,
+        (6, 6, 6, 6): 11
+    }
     t0 = time.time()
-    for i in range(1, 7):
-        for j in range(i, 7):
-            if i != j:
-                roll = i, j
-            else:
-                roll = i, i, i, i
-            ss = state_cls(roll=roll)
-            _ = ss.transitions
-            # print(roll, len(ss.transitions))
+    for roll in rolls_gen():
+        ss = state_cls(roll=roll)
+        transitions = ss.transitions
+        assert len(transitions) == d[roll]
     print("time elapsed:", time.time() - t0)
 
 

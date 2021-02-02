@@ -321,7 +321,7 @@ class State(ReprMixin):
 
 
 if __name__ == '__main__':
-
+    # вынесено в тесты
     def check():
         for i in range(1, 7):
             for j in range(i, 7):
@@ -331,4 +331,4 @@ if __name__ == '__main__':
                     roll = i, i, i, i
                 ss = State(roll=roll)
                 print(roll, len(ss.transitions))
-    # check()
+    check()

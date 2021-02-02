@@ -78,10 +78,7 @@ class MCNode:
         """
         child: MCNode
         """
-        b = child.state.board.fingerpring
-        assert b in self.untried_moves
         self._children.add(child)
-        del self.untried_moves[b]
 
     def update(self, result: int):
         self._visits += 1

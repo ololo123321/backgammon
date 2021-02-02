@@ -35,8 +35,8 @@ class Environment:
             self.state.sign = agent.sign
             if verbose:
                 self.draw(agent)
-            s, _ = agent.ply(self.state)
-            self.state = s.reversed
+            info = agent.ply(self.state)
+            self.state = info.state.reversed
             i = (i + 1) % 2
             # step += 1
             # if step > 200:
