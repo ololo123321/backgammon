@@ -33,15 +33,15 @@ class BaseAgent(ABC):
     def token(self):
         """нужно для отрисовки состояния"""
         if self.sign == 1:
-            return 'o'
-        return 'x'
+            return 'x'
+        return 'o'
 
     @property
     def opponent_token(self):
         """нужно для отрисовки состояния"""
         if self.sign == 1:
-            return 'x'
-        return 'o'
+            return 'o'
+        return 'x'
 
 
 class RandomAgent(BaseAgent):
