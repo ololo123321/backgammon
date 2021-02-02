@@ -1,4 +1,4 @@
-import random
+from typing import Dict, Tuple
 from collections import defaultdict
 from .state_pyx.state import State
 from .utils import rolls_gen
@@ -12,7 +12,8 @@ class MCNode:
             state: State = None,
             r: float = None,
             c: float = 1.0,
-            p: float = 1.0
+            p: float = 1.0,
+            untried_moves: Dict[Tuple, float] = None  # отображение "доска -> награда"
     ):
         self.sign = sign
         self.parent = parent
@@ -23,23 +24,26 @@ class MCNode:
         self.c = c  # exploration parameter
         self.p = p  #
 
-        self.wins = 0
-        self.visits = 0
+        self.untried_moves = untried_moves
 
-        self.children = set()
-
-        self.untried_moves = self.state.transitions
+        self._wins = 0
+        self._visits = 0
+        self._children = set()
 
     @property
     def ucb(self) -> float:
         """
         http://web.stanford.edu/%7Esurag/posts/alphazero.html - отсюда взята формула
         """
-        return self.wins / self.visits + self.c * self.r * self.visits ** 0.5 / self.visits
+        return self._wins / self._visits + self.c * self.r * self._visits ** 0.5 / self._visits
 
     @property
     def best_child(self):
-        return max(self.children, key=lambda child: child.ucb)
+        return max(self._children, key=lambda child: child.ucb)
+
+    @property
+    def most_visited_child(self):
+        return max(self._children, key=lambda child: child.visits)
 
     @property
     def is_fully_expanded(self) -> bool:
@@ -50,8 +54,8 @@ class MCNode:
         """
         if len(self.untried_moves) == 0:
             return True
-        elif random.random() < 1.0 - self.p:
-            return True
+        # elif random.random() < 1.0 - self.p:
+        #     return True
         else:
             return False
 
@@ -60,14 +64,28 @@ class MCNode:
         """
         Лист игрового дерева
         """
-        return len(self.children) == 0
+        return len(self._children) == 0
+
+    @property
+    def children(self):
+        return self._children
+
+    @property
+    def visits(self):
+        return self._visits
 
     def add_child(self, child):
-        self.children.add(child)
+        """
+        child: MCNode
+        """
+        b = child.state.board.fingerpring
+        assert b in self.untried_moves
+        self._children.add(child)
+        del self.untried_moves[b]
 
     def update(self, result: int):
-        self.visits += 1
-        self.wins += result
+        self._visits += 1
+        self._wins += result
 
 
 class GameTreeNode:

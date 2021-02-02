@@ -2,7 +2,6 @@ import random
 from typing import List
 from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
-from copy import deepcopy
 
 import tensorflow as tf
 import numpy as np
@@ -13,13 +12,13 @@ from src.environment import Environment
 from src.utils import rolls_gen
 
 
-TransitionInfo = namedtuple("TransitionInfo", ["state", "reward"])
+# all_possible_rewards - нужно для mcts
+TransitionInfo = namedtuple("TransitionInfo", ["state", "reward", "all_possible_rewards"])
 
 
 class BaseAgent(ABC):
     def __init__(self, sign=1):
         self.sign = sign
-        self.token, self.opponent_token = ('x', 'o') if self.sign == 1 else ('o', 'x')
 
     @abstractmethod
     def ply(self, state: State) -> TransitionInfo:
@@ -29,15 +28,31 @@ class BaseAgent(ABC):
         """
         pass
 
+    @property
+    def token(self):
+        """нужно для отрисовки состояния"""
+        if self.sign == 1:
+            return 'o'
+        return 'x'
+
+    @property
+    def opponent_token(self):
+        """нужно для отрисовки состояния"""
+        if self.sign == 1:
+            return 'x'
+        return 'o'
+
 
 class RandomAgent(BaseAgent):
     def __init__(self, sign=1):
         super().__init__(sign)
 
     def ply(self, state: State) -> TransitionInfo:
-        s = random.choice(state.transitions)
+        transitions = state.transitions
+        s = random.choice(transitions)
         r = 0.5
-        return TransitionInfo(state=s, reward=r)
+        all_possible_rewards = {t: 0.5 for t in transitions}
+        return TransitionInfo(state=s, reward=r, all_possible_rewards=all_possible_rewards)
 
 
 class InvalidInput(Exception):
@@ -65,16 +80,14 @@ class HumanAgent(BaseAgent):
         if len(transitions) == 1:
             print('Singe possible move is available')
             s = transitions[0]
-            r = 0.5
-            return TransitionInfo(state=s, reward=r)
+            return TransitionInfo(state=s, reward=None, all_possible_rewards=None)
 
         turn = self._get_input()
         board2state = {s.board.fingerprint: s for s in transitions}
         board_new = self._run_turn(turn=turn, board=state.board)
         if board_new.fingerprint in board2state:
             s = board2state[board_new.fingerprint]
-            r = 0.5
-            return TransitionInfo(state=s, reward=r)
+            return TransitionInfo(state=s, reward=None, all_possible_rewards=None)
         else:
             print('Invalid turn')
             print('Current state:', state.board.board, state.board.bar)
@@ -173,7 +186,8 @@ class TDAgent(BaseAgent):
         i = v.argmax()
         s = transitions[i]
         r = v[i]
-        return TransitionInfo(state=s, reward=r)
+        all_possible_rewards = dict(zip(transitions, v))
+        return TransitionInfo(state=s, reward=r, all_possible_rewards=all_possible_rewards)
 
 
 class SavedModelWrapper:
@@ -229,7 +243,8 @@ class KPlyAgent(BaseAgent):
         else:
             r_best = min(rewards)
         i = rewards.index(r_best)
-        return TransitionInfo(state=transitions[i], reward=r_best)
+        all_possible_rewards = dict(zip(transitions, rewards))
+        return TransitionInfo(state=transitions[i], reward=r_best, all_possible_rewards=all_possible_rewards)
 
 
 class KPlyAgentFused(KPlyAgent):
@@ -396,7 +411,8 @@ class KPlyAgentFused(KPlyAgent):
         else:
             i = min(d, key=d.get)
 
-        return TransitionInfo(state=transitions_root[i], reward=d[i])
+        all_possible_rewards = {transitions_root[k]: v for k, v in d.items()}
+        return TransitionInfo(state=transitions_root[i], reward=d[i], all_possible_rewards=all_possible_rewards)
 
 
 class MCAgent(BaseAgent):
@@ -410,22 +426,38 @@ class MCAgent(BaseAgent):
         self.c = c
 
         # TODO: учесть тот факт, что если это значение не равно 1.0,
-        # то из корня могут быть проверены не все варианты пи малом числе итераций
+        # то из корня могут быть проверены не все варианты при малом числе итераций
         self.p = p
 
-        self._opponent = deepcopy(agent)
+        # TODO: а если в конструктор класса нужно обязательно арги какие-то передавать?
+        self._opponent = agent.__class__()
+        for k, v in agent.__dict__.items():
+            setattr(self._opponent, k, v)
         self._opponent.sign = sign * -1
 
     def ply(self, state: State) -> TransitionInfo:
-        root = self._monte_carlo_tree_search(state)
-        v = max(child.visits for child in root.children)
-        s = random.choice([child.state for child in root.children if child.visits == v])
-        return TransitionInfo(state=s, reward=v)
+        root = self._mcts(state)
+        most_visited_child = root.most_visited_child
+        # TODO: странная награда
+        all_possible_rewards = {child.state: child.visits for child in root.children}
+        return TransitionInfo(
+            state=most_visited_child.state,
+            reward=most_visited_child.visits,
+            all_possible_rewards=all_possible_rewards
+        )
 
-    def _monte_carlo_tree_search(self, state: State) -> MCNode:
-        # TODO: reward
+    def _mcts(self, state: State) -> MCNode:
         # TODO: при построении игрового дерева учитывать разные комбинации кубиков
-        root = MCNode(sign=self.sign, parent=None, state=state, r=None, c=self.c, p=self.p)
+        info = self.agent.ply(state)
+        root = MCNode(
+            sign=self.sign,
+            parent=None,
+            state=state,
+            r=None,
+            c=self.c,
+            p=self.p,
+            untried_moves=info.all_possible_rewards
+        )
         for _ in range(self.num_simulations):
             node = self._select(root)
             node = self._expand(node)
@@ -445,10 +477,13 @@ class MCAgent(BaseAgent):
     def _expand(self, node: MCNode) -> MCNode:
         """
         попробовать новое действие
+        1. выбрать действие из untried_moves
+        2. добавить ребёнка с развёрнутым на противника состоянием
+        3. удалить выбранное действие из untried_moves
         """
-        # TODO: одним вызовом модели получать награды для всех доступных состояний из данного.
-        s, r = self.agent.ply(node.state)
-        child = MCNode(sign=node.sign * -1, parent=node, state=s, r=r, c=self.c, p=self.p)
+        best_untried_state, r = max(node.untried_moves.items(), key=lambda x: x[1])
+        # TODO: нужно ли делать 1 - r?
+        child = MCNode(sign=node.sign * -1, parent=node, state=best_untried_state.reversed, r=r, c=self.c, p=self.p)
         node.add_child(child)
         return child
 
@@ -457,7 +492,7 @@ class MCAgent(BaseAgent):
         доиграть игру из выбранного состояния
         """
         # TODO: делать несколько симуляций на одной итерации, чтобы учесть разные выпадения кубиков
-        env = Environment(agents=[self.agent, self._opponent], state=node.state)
+        env = Environment(agents=[self.agent, self._opponent], state=node.state.copy)
         winner = env.play(verbose=False)
         result = int(winner == self.sign)
         return result
