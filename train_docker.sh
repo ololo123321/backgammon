@@ -7,8 +7,6 @@ rm -r ${model_dir}
 model_dir_mnt="/model"
 
 time docker run -it \
-    -w /app \
-    -v $(pwd):/app \
     -v ${model_dir}:${model_dir_mnt} \
     --gpus all \
     backgammon:0.0.0 python train.py \

@@ -1,14 +1,7 @@
 import os
 import json
-import sys
 from argparse import ArgumentParser
-
 import tensorflow as tf
-
-# случай контейнера. нудно для погрузки скомпилированного State.
-# TODO: по-хорошему нужно сделать так, чтобы в контейнере только оно и было.
-#  сейчас в Dockerfile копируется
-sys.path.insert(0, "/app")
 from src.models import ModelTD as Model
 
 
