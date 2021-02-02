@@ -457,7 +457,7 @@ class MCAgent(BaseAgent):
             r=None,
             c=self.c,
             p=self.p,
-            untried_moves=info.all_possible_rewards
+            untried_moves=info.all_possible_rewards  # TODO: нужно ли состояния развернуть к противнику?
         )
         for _ in tqdm(range(self.num_simulations)):
             node = self._select(root)

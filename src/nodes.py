@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict
 from collections import defaultdict
 from .state_pyx.state import State
 from .utils import rolls_gen
@@ -13,7 +13,7 @@ class MCNode:
             r: float = None,
             c: float = 1.0,
             p: float = 1.0,
-            untried_moves: Dict[Tuple, float] = None  # отображение "доска -> награда"
+            untried_moves: Dict[State, float] = None  # отображение "доска -> награда"
     ):
         self.sign = sign
         self.parent = parent
