@@ -23,8 +23,11 @@ if __name__ == '__main__':
 
     if args.restore:
         print("restoring pretrained model...")
-        model = Model(sess=sess, config=None)
-        model.restore(model_dir=args.model_dir)
+        if os.path.isdir(args.model_dir):
+            model = Model(sess=sess, config=None)
+            model.restore(model_dir=args.model_dir)
+        else:
+            raise Exception(f"invalid model dir: {args.model_dir}")
     else:
         print("building new model...")
         os.makedirs(args.model_dir, exist_ok=True)
